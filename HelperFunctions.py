@@ -13,16 +13,13 @@ import os
 import numpy as np
 import skimage as sk
 
-@staticmethod
 def get_stack_size(input_file):
     tiff_collection = sk.io.ImageCollection(input_file)
     return len(tiff_collection)
 
-@staticmethod
 def read_from_stack(input_file, frame):
     return sk.io.imread(input_file, img_num=frame)
 
-@staticmethod
 def load_files(input_dir, header='tif'):
     '''
     Helper function used to get string array of all files with header 
@@ -43,7 +40,6 @@ def load_files(input_dir, header='tif'):
     print(f'input directory {input_dir} contains {len(image_paths)} files ...')
     return np.sort(image_paths), np.sort(image_names)
 
-@staticmethod
 def create_output_dir(output_folder):
     '''
     Helper function used to generate an output folder for the processed data
@@ -55,8 +51,7 @@ def create_output_dir(output_folder):
         raise Exception(f'Directory {output_folder} already exists, and contains files, check that you do not overwrite anything!')
     else:
         print(Warning(f'Directory {output_folder} already exists, but does not contain files, so nothing will get overwritten, continuing ..'))
-        
-@staticmethod
+
 def print_directory_tree(input_dir, indent_level=0):
     for root, dirs, files in os.walk(input_dir):
         # Determine the current level by counting the number of separators in the root
@@ -75,7 +70,6 @@ def print_directory_tree(input_dir, indent_level=0):
         for f in files:
             print(f"{subindent}|-- {f}")
 
-@staticmethod
 def get_dir_tree(input_dir):
     return None
     
