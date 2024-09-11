@@ -6,7 +6,7 @@ Created on Mon Sep  9 11:55:13 2024
 @description: 
     Helperfunctions should be stored in this script so they can be 
     readily imported for other analysis scripts. Example helperfunctions
-    are image loading scipts, directory creating, directory reading etc.
+    are image loading, directory creating, directory reading etc.
 """
 
 import os
