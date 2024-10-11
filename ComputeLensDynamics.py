@@ -13,46 +13,64 @@ import matplotlib.pyplot as plt
 
 class ComputeLensDynamics:
     def __init__(self, input_dir, XMIN=None, XMAX=None, YMIN=None, YMAX=None, edge_detection='canny'):
-        print('initializing...')
+        print('\nInitializing...')
         
-        print('getting files ...')
+        print('\nGetting files ...')
         self.image_paths, _ = hp.load_files(input_dir)
-        print(f'found {len(self.image_paths)} stack(s)')
+        print(f'     found {len(self.image_paths)} stack(s)')
         
-        print('finding image dimensions ...')
+        print('\nFinding frames of each tiff stack ...')
+        self.stack_list = {}
+        name = "Stack"
+        for ii, path in enumerate(self.image_paths):
+            self.stack_list['stack ' + str(ii + 1)] = ([0, hp.get_stack_size(path)], path)
+            print(f'     stack {ii + 1}/{len(self.image_paths)} contains {hp.get_stack_size(path)} frames')
+        
+        print('\nFinding image dimensions ...')
         if self.image_paths is not None:
             self.image_shape = hp.read_from_stack(self.image_paths[0], 0).shape
-        print(f'image dimensions found: {self.image_shape[0]} x {self.image_shape[1]}')
+        print(f'     image dimensions found: {self.image_shape[0]} x {self.image_shape[1]}')
         
-        print('finding frames of each tiff stack')
-        self.frames = []
-        frames = []
-        for path in self.image_paths:
-            self.frames.append([0, hp.get_stack_size(path)])
-        
-        print('Checking window ...')
+        print('\nChecking window ...')
         self.check_window(XMIN, XMAX, YMIN, YMAX)
         
-        print('Setting edge detection ...')
+        print('\nFinding connecting frame ...')
+        self.find_connecting_frame()
         
-        print('done!')
+        print('all done!')
+    
+    def find_connecting_frame(self):
+        '''
+        function runs through all images in all stacks and finds where the 
+        droplets first connect, and adjusts the stack_list accordingly
+        '''
+        
+        # Iterate through stack
+        for stack in self.stack_list:
+            stack_data = self.stack_list[stack]
+            print(stack_data)
+            # Iterate through images
+            
+                # Find connecting frame
+                    # Record frame, save to stack
+                
+                # If completely iterated through stack, delete stack from list
+        
+                
     
     def get_R(self):
         '''
         Big routine which is ran to get the side view height over time
         '''
         
-        # ------------------------ Load Images --------------------------------
-        # Create a vector of the starting and ending frame of each tiff stack
-        frames = []
-        for path in self.image_paths:
-            frames.append([0, hp.get_stack_size(path)])
-
+        
+        print('\nComputing R ...')
+        
         # ----------------- Find Connecting Frame -----------------------------
         # Get the initial frame where the droplets connect
         stack_cnt = 0
         frame_cnt = 0
-        for image_path, entries in zip(self.image_paths, frames):
+        for image_path, entries in zip(self.image_paths, self.frames):
             for entry in range(entries[1]):
                 # Load image from tif stack
                 image = hp.read_from_stack(image_path, entry)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
@@ -72,8 +90,8 @@ class ComputeLensDynamics:
                 stack_cnt += 1
 
         # Set the starting frame, at the appropriate stack
-        frame_end = frames[stack_cnt][-1]
-        frames[stack_cnt] = [frame_start, frame_end]
+        frame_end = self.frames[stack_cnt][-1]
+        self.frames[stack_cnt] = [frame_start, frame_end]
     
     
         # -------------------------- Extract the edges --------------------------------
@@ -81,7 +99,7 @@ class ComputeLensDynamics:
         stack_tracker = 1
         diff = 10 #px
         r_max = []
-        for image_path, entries in zip(self.image_paths[stack_cnt:], frames[stack_cnt:]):
+        for image_path, entries in zip(self.image_paths[stack_cnt:], self.frames[stack_cnt:]):
             print(f"stack {stack_tracker}/{len(self.image_paths)}")    
             iterator = range(entries[0], entries[1])
             

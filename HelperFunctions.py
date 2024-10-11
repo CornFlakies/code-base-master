@@ -14,10 +14,16 @@ import numpy as np
 import skimage as sk
 
 def get_stack_size(input_file):
+    '''
+    Gets the size of a tiff stack
+    '''
     tiff_collection = sk.io.ImageCollection(input_file)
     return len(tiff_collection)
 
-def read_from_stack(input_file, frame):
+def load_from_stack(input_file, frame):
+    '''
+    Helper function loads an image from a tiff stack
+    '''
     return sk.io.imread(input_file, img_num=frame)
 
 def load_files(input_dir, header='tif'):
@@ -37,7 +43,6 @@ def load_files(input_dir, header='tif'):
             image_names.append(entry)
             image_paths.append(os.path.join(input_dir, entry))
             
-    print(f'input directory {input_dir} contains {len(image_paths)} files ...')
     return np.sort(image_paths), np.sort(image_names)
 
 def create_output_dir(output_folder):

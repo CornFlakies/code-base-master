@@ -5,48 +5,21 @@ Created on Mon Sep  9 15:48:22 2024
 @author: coena
 """
 
-# import cv2 as cv
 import numpy as np
 import skimage as sk
-from skimage import measure
 import matplotlib.pyplot as plt
-from scipy.ndimage import convolve
 from scipy.optimize import curve_fit
+from scipy.interpolate import CubicSpline
 
-
-@staticmethod
-def Gx():
-    return np.array([[-1, 0, 1],
-                     [-2, 0, 2],
-                     [-1, 0, 1]])
-@staticmethod
-def Gy():
-    return np.array([[1, 2, 1],
-                     [0, 0, 0],
-                     [-1, -2, 1]])
-
-@staticmethod
-def matrix_convolve(matrix, kernel):
-    '''
-    Routine used to take same-size matrix and kernel, and computes the convolution
-    of the center pixel of the provided matrix
-    '''
-    
-
-
-@staticmethod
-def gaussian(x, a, b, c):
-    return a*np.exp(-(x - b)**2/(2*c**2)) 
 
 def canny_edges(image):
     '''
-    Routine to compute the Canny edges of the image.
+    Routine to compute the Canny edges of an image.
     '''
-    # Hard coding canny params. Provided a normalized image is used, defaults are:
-    # t_min = 0.1 ; t_max = 0.2
-    t_min = 0.1
-    t_max = 0.2
-    kernel = 3
+    # Hard coding canny params.
+    # defaults are: t_min = 0.1 * img_max ; t_max = 0.2 * img_max
+    t_min = None
+    t_max = None
     
     # Apply Canny edge detector
     edges = sk.feature.canny(image, 
@@ -55,7 +28,6 @@ def canny_edges(image):
                              high_threshold=t_max)
 
     return edges
-    
 
 def canny_subpix(image, edge_coords):
     '''
@@ -63,68 +35,66 @@ def canny_subpix(image, edge_coords):
     as point from which to get the gradient. The gradient is taken to be in the 
     direction parallel to the ground, or upwards/downards
     '''
-    # analytical x-axis
-    xana = np.linspace(0, 1, 50)
+    
+    # Gaussian fucntion used for the fitting routine
+    def gaussian(x, a, b, c):
+        return a*np.exp(-(x - b)**2/(2*c**2)) 
+    
+    # Remove duplicates on the x-axis, as they sample the same edge
+    _, unique_indices = np.unique(edge_coords[:, 0], return_index=True)
+    edge_coords = edge_coords[unique_indices]
+    
+    # Pre-allocate new array
+    coords_subpix = np.zeros(edge_coords.shape, dtype=float)
     
     # padding is taken from the left and right of the images
-    padding = image.shape[0] // 10 #px
+    padding = image.shape[1] // 8 
 
-    for coord in edge_coords:
-        x = coord[1]
-        y = coord[0]
+    for ii, coord in enumerate(edge_coords):
+        # Separate x- and y-coordinates for readability
+        x = coord[0]
+        y = coord[1]
+        
+        # Get region of interest from the image row
         image_row = image[y-padding:y+padding, x]
-        edge_kernel = image[y-1:y+2, x-1:x+2]
-        plt.figure()
-        plt.imshow(edge_kernel)
-        
-        dir_x = matrix_convolve(edge_kernel, Gx())
-        print(dir_x)
-        
+
+        # Compute gradient
         grad = np.gradient(np.abs(image_row - 1))
         params, _ = curve_fit(gaussian, np.arange(0, len(grad)), grad)
-        
-        xana = np.linspace(0, len(grad), 50)
-        yana = gaussian(xana, params[0], params[1], params[2])
-        
-        plt.figure()
-        plt.plot(grad)
-        plt.plot(xana, yana)
-        plt.plot(params[1], params[0])
-        print('peak loc: ' + str(params[1]))
-        print('peak max: ' + str(params[0]))
-        break
-    return None
+
+        # Store subpixel edge to array
+        coords_subpix[ii] = [coord[0], coord[1]  - padding + params[1]]
+
+    return coords_subpix
 
 def detect_edges(image):
     '''
     Takes a single (8-bit, grayscale) image and detects the edge(s) of the droplets.
-    This is done using subpix accuracy, consequently the algorithm spits out a vector
-    of (x,y) coordinates of the edges.
+    To get supbixel accuracy, a Gaussian interpolation is done along the edge pixels
+    detected by a Canny edge detector.
     '''
-    
     # Gaussian blurring
     image = sk.filters.gaussian(image, sigma=3)
 
     # Normalize to 1
     image = ((image - image.min()) / image.max())
 
-    # Canny edges
+    # Get Canny edges
     edges = canny_edges(image)
     
-    # Get edge coordinates
-    coords = np.column_stack(np.where(edges > 0))
+    # Convert edges to coordinates
+    coords = np.column_stack(np.where(edges.T > 0))
 
-    # Get subpixel accuracy on the edges
+    # Get subpixel accuracy on the edges along the y-axis
     coords_subpix = canny_subpix(image, coords)    
 
-    return coords_subpix
+    return coords_subpix, coords
 
 def is_connected(image):
     '''
     Find the first frame where the droplets connect, such that a starting frame
     can be defined, from which to base the initial bridge height off.
     '''
-    
     # Get canny edges
     edges = canny_edges(image)
     
@@ -147,37 +117,64 @@ def find_edge_extrema(coords_edges):
     interpolation (such that the data scales monotonically). The resultant spline \
     is then used to get the maximum location of the droplet bridge
     '''
+        
+    def poly(x, x0, a, b, c):
+        return a + b*(x - x0)**2 + c*(x - x0)**4
     
+    def poly_deriv(x, x0, b, c):
+        return 2 * b * (x - x0) + 4*c*(x - x0)**3
+    
+    # Separate x- and y-coordinates for readability
     x = coords_edges[:, 0]
     y = coords_edges[:, 1]    
     
-    # Second Splining method
-    idxsort = np.argsort(x)
-    # x = x[idxsort]
-    # x = x[:-1]
-    # y = y[idxsort]
-    # y = y[:-1]
+    # Fit 2nd and 4th order polynomial
+    p0 = [x[len(x)//2], 1, 1, 1]
+    print(p0)
+    params, pcov = curve_fit(poly, x, y, p0)
+    x_ana = np.linspace(x[0], x[-1], 50)
+    
+    plt.figure()
+    # plt.plot(x, y, 'o', color='red')
+    plt.plot(x_ana, poly(x_ana, *params), '-', color='black')
     
     # Create Spline and its derivative
-    spline = scipy.interpolate.Rbf(x, y)
-    print('jo')
+    spline = CubicSpline(x, y)
     spline_deriv = spline.derivative()
     
+    # plt.figure()
+    # plt.plot(xsp, spline.derivative()(xsp), '-', color='blue')
+    
     # Get maximum
-    x_max = spline_deriv.roots()
-    y_max = spline(x_max)
-    xsp = np.linspace(x[0], x[-1], int(1E6))
+    x_extrema = spline_deriv.roots()
+    y_extrema = spline(x_extrema)
+    x_max = x_extrema[(x_extrema > 0) & (x_extrema < x_extrema[-1])][0]
+    y_max = y_extrema[(x_extrema > 0) & (x_extrema < x_extrema[-1])][0]
     
-    # Plot spline
-    plt.figure()
-    plt.scatter(x, y)
-    plt.plot(xsp, spline(xsp), '-', color='red')
+    plt.plot(x_ana, spline(x_ana), '-', color='blue')
     
-    # Plot the derivative
-    plt.figure()
-    plt.plot(xsp, spline_deriv(xsp))
+    return x_max, y_max, spline
+
+# Sobel gradient stuff that I will probably not use
+    def Gx():
+        return np.array([[-1, 0, 1],
+                         [-2, 0, 2],
+                         [-1, 0, 1]])
+    def Gy():
+        return np.array([[1, 2, 1],
+                         [0, 0, 0],
+                         [-1, -2, 1]])
     
-    return x_max, y_max
+    def matrix_convolve(matrix, kernel):
+        '''
+        Routine used to take same-size matrix and kernel, both the matrix and kernel
+        are symmetric, and contain odd-numbered axes.
+        Then, it computes the convolution of the center pixel of the provided matrix
+        '''
+        acc = 0
+        for mat_val, ker_val in zip(matrix.flatten(), kernel.flatten()):
+            acc += mat_val * ker_val
+        return acc
     
     
         
