@@ -5,107 +5,128 @@ Created on Mon Sep  9 15:48:22 2024
 @author: coena
 """
 
-import cv2 as cv
+# import cv2 as cv
 import numpy as np
+import skimage as sk
+from skimage import measure
 import matplotlib.pyplot as plt
-from skimage.feature import corner_peaks
-from skimage.feature import corner_subpix
-import scipy.interpolate
+from scipy.ndimage import convolve
+from scipy.optimize import curve_fit
 
-def canny_edges(image, T_min, T_max, kernel):
+
+@staticmethod
+def Gx():
+    return np.array([[-1, 0, 1],
+                     [-2, 0, 2],
+                     [-1, 0, 1]])
+@staticmethod
+def Gy():
+    return np.array([[1, 2, 1],
+                     [0, 0, 0],
+                     [-1, -2, 1]])
+
+@staticmethod
+def matrix_convolve(matrix, kernel):
+    '''
+    Routine used to take same-size matrix and kernel, and computes the convolution
+    of the center pixel of the provided matrix
+    '''
+    
+
+
+@staticmethod
+def gaussian(x, a, b, c):
+    return a*np.exp(-(x - b)**2/(2*c**2)) 
+
+def canny_edges(image):
     '''
     Routine to compute the Canny edges of the image.
     '''
-    # Remove noise with a gaussian blur filter
-    blur = cv.GaussianBlur(image, kernel, 0)
+    # Hard coding canny params. Provided a normalized image is used, defaults are:
+    # t_min = 0.1 ; t_max = 0.2
+    t_min = 0.1
+    t_max = 0.2
+    kernel = 3
     
     # Apply Canny edge detector
-    edges = cv.Canny(blur, T_min, T_max)
-    
-    return edges    
+    edges = sk.feature.canny(image, 
+                             sigma=0,
+                             low_threshold=t_min,
+                             high_threshold=t_max)
 
-def detect_edges(image, T_min=50, T_max=170, kernel=(3,3)):
+    return edges
+    
+
+def canny_subpix(image, edge_coords):
     '''
-    Takes a single (8-bit, grayscale) image and detects the edge(s) of the droplets 
-    This is done using subpix accuracy, as such the algorithm spits out a vector
+    Routine used to get supixel location of the edges. Uses the canny edge coords
+    as point from which to get the gradient. The gradient is taken to be in the 
+    direction parallel to the ground, or upwards/downards
+    '''
+    # analytical x-axis
+    xana = np.linspace(0, 1, 50)
+    
+    # padding is taken from the left and right of the images
+    padding = image.shape[0] // 10 #px
+
+    for coord in edge_coords:
+        x = coord[1]
+        y = coord[0]
+        image_row = image[y-padding:y+padding, x]
+        edge_kernel = image[y-1:y+2, x-1:x+2]
+        plt.figure()
+        plt.imshow(edge_kernel)
+        
+        dir_x = matrix_convolve(edge_kernel, Gx())
+        print(dir_x)
+        
+        grad = np.gradient(np.abs(image_row - 1))
+        params, _ = curve_fit(gaussian, np.arange(0, len(grad)), grad)
+        
+        xana = np.linspace(0, len(grad), 50)
+        yana = gaussian(xana, params[0], params[1], params[2])
+        
+        plt.figure()
+        plt.plot(grad)
+        plt.plot(xana, yana)
+        plt.plot(params[1], params[0])
+        print('peak loc: ' + str(params[1]))
+        print('peak max: ' + str(params[0]))
+        break
+    return None
+
+def detect_edges(image):
+    '''
+    Takes a single (8-bit, grayscale) image and detects the edge(s) of the droplets.
+    This is done using subpix accuracy, consequently the algorithm spits out a vector
     of (x,y) coordinates of the edges.
     '''
     
-    # Transpose image so that the image is oriented correctly for edge detection
-    image = image.T
+    # Gaussian blurring
+    image = sk.filters.gaussian(image, sigma=3)
+
+    # Normalize to 1
+    image = ((image - image.min()) / image.max())
+
+    # Canny edges
+    edges = canny_edges(image)
     
-    # Get Canny edges
-    edges = canny_edges(image, T_min, T_max, kernel)
-    
-    # Find initial edge points
+    # Get edge coordinates
     coords = np.column_stack(np.where(edges > 0))
-    
-    # Filter out the edge coordinates at the boundary of the image, otherwise
-    # There will be a mismatch betwen the windowing and the edge coordinates
-    padding = 7 #px
-    coords = coords[
-        (coords[:, 0] >= padding) & (coords[:, 0] < image.shape[0] - padding) &
-        (coords[:, 1] >= padding) & (coords[:, 1] < image.shape[1] - padding)
-    ]
-    
-    # Apply subpixel refinement using Devernay approximation algorithm
-    coords_subpix = corner_subpix(image, coords, window_size=13)
-    
+
+    # Get subpixel accuracy on the edges
+    coords_subpix = canny_subpix(image, coords)    
+
     return coords_subpix
 
-def find_edge_extrema(coords_edges):
+def is_connected(image):
     '''
-    Finds the maximum location based on the subpixel detected edge, a parameterization
-    scheme is used to prepare the x- and y-data for interpolation (such that the data
-    scales monotonically). The resultant spline is then used to get the maximum 
-    location of the droplet bridge
-    '''
-    # sort_idx = np.argsort(coords_edges[]xis=0)
-    # x = coords_edges[sort_idx, 0]
-    # y = coords_edges[sort_idx, 1]
-    # spline = scipy.interpolate.CubicSpline(x, y)
-    
-    x = coords_edges[:, 0]
-    y = coords_edges[:, 1]
-    t = np.linspace(0, 1, x.size)
-    r = np.vstack((x.reshape((1, x.size)), y.reshape((1, y.size))))
-    spline = scipy.interpolate.interp1d(t, r, kind='cubic')
-    
-    # you want to interpolate x and y
-    # it MUST be within 0 and 1, since you defined
-    # the spline between path_t=0 and path_t=1
-    t = np.linspace(np.min(t), np.max(t), 100)
-    
-    # interpolating along t
-    # r[0,:] -> interpolated x coordinates
-    # r[1,:] -> interpolated y coordinates
-    
-    # First iteration, get rough estimate of the maximum
-    r = spline(t)
-    t_max = t[np.argmax(r[1, :])]
-    
-    # Second iteration, refine grid and get better estimate of the maximum.
-    buffer = 1E-2
-    t = np.linspace(t_max - buffer, t_max + buffer, int(1E6))
-    r = spline(t)
-    x_max = r[0, np.argmax(r[1, :])]
-    y_max = np.max(r[1, :])
-    
-    # print(x_max)
-    # print(y_max)
-    # plt.figure()
-    # plt.plot(r[0, :], r[1, :], '.-')
-    # plt.plot(x, y, '-')
-    
-    return x_max, y_max
-    
-def is_connected(image, T_min=50, T_max=170, kernel=(3,3)):
-    '''
-    find the first frame where the droplets connect, such that a starting frame
+    Find the first frame where the droplets connect, such that a starting frame
     can be defined, from which to base the initial bridge height off.
     '''
+    
     # Get canny edges
-    edges = canny_edges(image, T_min, T_max, kernel)
+    edges = canny_edges(image)
     
     # Find the two edges, if they exist
     gap = 0
@@ -115,8 +136,48 @@ def is_connected(image, T_min=50, T_max=170, kernel=(3,3)):
     
     # Check if the gap has closed, then return True
     if (gap == 0):
-        return True 
+        return True
     else:
         return False
+
+def find_edge_extrema(coords_edges):
+    '''
+    Finds the maximum location based on the subpixel detected edge, a parameterization
+    scheme is used to prepare the x- and y-data for cubic spline 
+    interpolation (such that the data scales monotonically). The resultant spline \
+    is then used to get the maximum location of the droplet bridge
+    '''
+    
+    x = coords_edges[:, 0]
+    y = coords_edges[:, 1]    
+    
+    # Second Splining method
+    idxsort = np.argsort(x)
+    # x = x[idxsort]
+    # x = x[:-1]
+    # y = y[idxsort]
+    # y = y[:-1]
+    
+    # Create Spline and its derivative
+    spline = scipy.interpolate.Rbf(x, y)
+    print('jo')
+    spline_deriv = spline.derivative()
+    
+    # Get maximum
+    x_max = spline_deriv.roots()
+    y_max = spline(x_max)
+    xsp = np.linspace(x[0], x[-1], int(1E6))
+    
+    # Plot spline
+    plt.figure()
+    plt.scatter(x, y)
+    plt.plot(xsp, spline(xsp), '-', color='red')
+    
+    # Plot the derivative
+    plt.figure()
+    plt.plot(xsp, spline_deriv(xsp))
+    
+    return x_max, y_max
+    
     
         
