@@ -31,6 +31,7 @@ def load_files(input_dir, header='tif'):
     Helper function used to get string array of all files with header 
     in supplied directory. Supply the header with the preceding dot
     '''
+    
     # Load in image paths
     images = np.sort(os.listdir(input_dir))
     

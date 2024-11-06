@@ -91,7 +91,7 @@ def detect_edges(image):
     # Get subpixel accuracy on the edges along the y-axis
     coords_subpix = canny_subpix(image, coords)    
 
-    return coords_subpix, coords
+    return coords_subpix
 
 def is_connected(image):
     '''
