@@ -125,7 +125,7 @@ class ComputeLensDynamics:
                 coords_subpix = self.dp.detect_edges(image)
                 
                 # Get the maximum from the coordinates (by fitting a spline)
-                x_max, y_max = self.dp.find_edge_extrema(coords_subpix)
+                x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
                 
                 # Append the maxima
                 r_max.append([x_max, y_max])

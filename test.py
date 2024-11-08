@@ -30,16 +30,19 @@ YMIN = 0
 YMAX = None
 
 image_paths, _ = hp.load_files(path)
-image = hp.load_from_stack(image_paths[0], 90)[YMIN:YMAX, XMIN:XMAX]
+image = hp.load_from_stack(image_paths[0], 85)[YMIN:YMAX, XMIN:XMAX]
 
 t_init = time.time()
 dpt.is_connected(image)
 t_final1 = time.time() - t_init
 print('Edge detection run took: ' + str(t_final1 * 1e3) + ' ms')
 
+plt.figure()
+plt.imshow(image)
+
 contours = dpt.contour_edges(image)
 t_init = time.time()
-x_max, y_max = dpt.find_edge_extrema(contours)
+x_max, y_max = dpt.find_edge_extrema(image, contours)
 t_final2 = time.time() - t_init
 print('Maximum finding run took: ' + str(t_final2 * 1e3) + ' ms')
 

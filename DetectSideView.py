@@ -120,19 +120,15 @@ def is_connected(image):
         return False
     
 
-def find_edge_extrema(coords_edges):
+def find_edge_extrema(image, coords_edges):
     '''
-    Finds the maximum location based on the subpixel detected edge, a parameterization
-    scheme is used to prepare the x- and y-data for cubic spline 
-    interpolation (such that the data scales monotonically). The resultant spline \
-    is then used to get the maximum location of the droplet bridge
+    Finds the maximum location based on the subpixel detected edge, a polynomial
+    containing a 2nd and 4th order are fit to the data, and the resultant maximum
+    from that polynomial is used to find the maxima in x and y
     '''
         
     def poly(x, x0, a, b, c):
         return a + b*(x - x0)**2 + c*(x - x0)**4
-    
-    def poly_deriv(x, x0, a, b, c):
-        return 2 * b * (x - x0) + 4*c*(x - x0)**3
     
     # Separate x- and y-coordinates for readability
     x = coords_edges[:, 0]
