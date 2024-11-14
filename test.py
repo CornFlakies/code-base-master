@@ -46,7 +46,7 @@ x_max, y_max = dpt.find_edge_extrema(image, contours)
 t_final2 = time.time() - t_init
 print('Maximum finding run took: ' + str(t_final2 * 1e3) + ' ms')
 
-# print('Total time of: ' + str((t_final1 + t_final2) * 1e3) + ' ms')
+print('Total time of: ' + str((t_final1 + t_final2) * 1e3) + ' ms')
     
 # plt.figure()
 # plt.imshow(image, cmap='gray')
@@ -65,8 +65,8 @@ print('Maximum finding run took: ' + str(t_final2 * 1e3) + ' ms')
 # plt.figure()
 # plt.plot(xsp, spline.derivative()(xsp), '-', color='blue')
 
-# cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, view='top')
-# r_max = cpd.get_R()
+cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, view='top')
+r_max = cpd.get_R()
 
 
 

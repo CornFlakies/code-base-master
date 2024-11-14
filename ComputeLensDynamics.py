@@ -121,7 +121,7 @@ class ComputeLensDynamics:
                 # Get image from stack
                 image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
                 
-                # Detects edges with subpixel accurac
+                # Detects edges with subpixel accuracy
                 coords_subpix = self.dp.detect_edges(image)
                 
                 # Get the maximum from the coordinates (by fitting a spline)

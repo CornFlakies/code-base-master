@@ -100,11 +100,12 @@ def find_edge_extrema(image, contours):
     is then used to get the maximum location of the droplet bridge
     '''
     
-    # Determines the relevant data before it curves to be non-monotonic
-    def getPadding(c):
+    # Get the padding of the positively curved line 
+    def getMaxPadding(c):
         idx_max = np.argmax(c[:, 0])
         pad = 0
         ii = idx_max
+        # Find the strictly increasing points 
         while ii < (len(c[:, 1]) - 1):
             if (c[ii, 1]) < (c[ii + 1, 1]):
                 break
@@ -114,6 +115,7 @@ def find_edge_extrema(image, contours):
         pad_f = pad
         pad = 0
         ii = idx_max
+        # Find the strictly decreasing points
         while ii > 0:
             if (c[ii, 1] > c[ii - 1, 1]):
                 break
@@ -122,74 +124,102 @@ def find_edge_extrema(image, contours):
                 ii -= 1
         pad_b = pad
         return pad_f, pad_b
-            
+    
+    # Get the padding of the negatively curved line 
+    def getMinPadding(c):
+        idx_max = np.argmin(c[:, 0])
+        pad = 0
+        ii = idx_max
+        # Find the strictly increasing points 
+        while ii < (len(c[:, 1]) - 1):
+            if (c[ii, 1]) > (c[ii + 1, 1]):
+                break
+            else:
+                pad += 1
+                ii += 1
+        pad_f = pad
+        pad = 0
+        ii = idx_max
+        # Find the strictly increasing points 
+        while ii > 0:
+            if (c[ii, 1] < c[ii - 1, 1]):
+                break
+            else:
+                pad += 1
+                ii -= 1
+        pad_b = pad
+        return pad_f, pad_b
+                  
+    # Get maximum of the positvely curved line
     def getMax(c):
         idx_max = np.argmax(c[:, 0])
-        pad_f, pad_b = getPadding(c)
+        pad_f, pad_b = getMaxPadding(c)
         
         x = c[(idx_max - pad_b):(idx_max + pad_f), 1]
         y = c[(idx_max - pad_b):(idx_max + pad_f), 0]
-        x_ana = np.linspace(x[0], x[-1], 100)
+        
+        x = x[np.argsort(x)]
+        y = y[np.argsort(x)]
 
         spline = CubicSpline(x, y)
-        y_ana = spline(x_ana)
-        plt.figure()
-        plt.plot(x_ana, y_ana)
-        return None
+        spline_xmax = spline.derivative().roots()
+        spline_ymax = spline(spline_xmax)
+        
+        if len(spline_xmax) > 1:
+            closest_max = spline_ymax - c[idx_max, 0]
+            spline_ymax = spline_ymax[np.argmin(closest_max)]
+            spline_xmax = spline_xmax[np.argmin(closest_max)]
+        
+        return spline_xmax, spline_ymax
     
+    # Get minimum of negatively curved line
     def getMin(c):
-        return None
+        idx_max = np.argmin(c[:, 0])
+        pad_f, pad_b = getMinPadding(c)
+        
+        x = c[(idx_max - pad_b):(idx_max + pad_f), 1]
+        y = c[(idx_max - pad_b):(idx_max + pad_f), 0]
+
+        x = x[np.argsort(x)]
+        y = y[np.argsort(x)]
+        
+        plt.figure()
+        plt.plot(x, y, '.-')
+
+        spline = CubicSpline(x, y)
+        spline_xmax = spline.derivative().roots()
+        spline_ymax = spline(spline_xmax)
+        
+        if len(spline_xmax) > 1:
+            closest_max = spline_ymax - c[idx_max, 0]
+            spline_ymax = spline_ymax[np.argmin(closest_max)]
+            spline_xmax = spline_xmax[np.argmin(closest_max)]
+            
+        return spline_xmax, spline_ymax
     
-    x_max = []
-    y_max = []
+    # Log the maxima of the two contours
+    c_max = []
+    
+    # Plot contours for debugging purposes
+    # for c in contours:
+    #     plt.figure()
+    #     plt.plot(c[:, 0], c[:, 1], '.-')
     
     # Find midline, such that contours above and below can be identified
     midline = image.shape[0] // 2
     for ii, c in enumerate(contours):
         ct = c[:, 0] < midline
         cb = c[:, 0] > midline
-        print(any(cb) and any(ct))
         # Remove the circular contour crossing the midline
         if any(cb) and any(ct):
-            to_pop = ii
+            continue
         # If contour above midline
         elif all(ct) and not all(cb):
-            getMax(c)
+            cmax = getMax(c)
+            c_max.append(cmax)
         # If contour below midline
         elif all(cb) and not all(ct):
-            getMin(c)
-            
-    # Delete the stinky contour found in the reflection
-    contours.pop(to_pop) 
-    
-    # for c in contours:
-    #     # Separate x- and y-coordinates for readability
-    #     x = c[:, 1]
-    #     y = c[:, 0]    
-        
-    #     # Create parameterization parameter t, and parameter curve r
-    #     # t is defined such that t[0] = 0 = x[0] and t[-1] = 1 =  x[-1]
-    #     t = np.linspace(0, 1, x.size)
-    #     # Create x, y vector
-    #     r = np.vstack((x.reshape(1, x.size), y.reshape(1, y.size)))
+            cmin = getMin(c)
+            c_max.append(cmin)
 
-    #     # Making Spline object
-    #     spline = CubicSpline(t, r.T)
-    #     spline_deriv = spline.derivative()
-        
-    #     # Interpolated data: r[0, :] -> x coordinates
-    #     # Interpolated data: r[1,: ] -> y coordinates
-    #     r = spline(t).T
-    #     r_deriv = spline_deriv(t).T
-        
-    #     plt.plot(x, y)
-    #     plt.plot(r[0, :], r[1, :], '.-')
-    
-    #     # # Fit spline
-    #     # spline = UnivariateSpline(x, y)
-    #     # roots = spline.deriv().roots()
-    
-    #     # x_max.append(roots)
-    #     # y_max.append(spline(roots))
-    
-    return x_max, y_max
+    return c_max
