@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 class ComputeLensDynamics:
-    def __init__(self, input_dir, XMIN=None, XMAX=None, YMIN=None, YMAX=None, view='side', edge_detection='canny'):        
+    def __init__(self, input_dir, XMIN=0, XMAX=None, YMIN=0, YMAX=None, framestart=0, view='side', edge_detection='canny'):        
         print('\nInitializing...')
         if (view == 'side'):
             self.dp = dps
@@ -41,8 +41,11 @@ class ComputeLensDynamics:
         print('\nChecking window ...')
         self.check_window(XMIN, XMAX, YMIN, YMAX)
         
-        print('\nFinding connecting frame ...')
-        self.find_connecting_frame()
+        if (framestart == 0):
+            print('\nFinding connecting frame ...')
+            self.find_connecting_frame()
+        elif (framestart > 0):
+            print(f'\n Starting frame specified: frame {framestart}')
         
         print('all done!')
     
@@ -61,16 +64,20 @@ class ComputeLensDynamics:
             stack_start = self.stack_list[stack][0][0]
             stack_end = self.stack_list[stack][0][1]
             stack_path = self.stack_list[stack][1]
+            print(f"stack {stack}/{len(self.stack_list)}")  
+            
+            # Iterator to go through stack
+            iterator = range(stack_start, stack_end)
             
             # Iterate through images
-            for ii in range(stack_start, stack_end):
+            for ii in iterator:
                 image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
                 # Find connecting frame
                 connected = self.dp.is_connected(image)
                 if connected:
                     # Record frame, save to stack
-                    plt.figure()
-                    plt.imshow(image)
+                    # plt.figure()
+                    # plt.imshow(image)
                     print(f'    found connection in {stack} frame {ii}!')
                     stack_start = ii
                     break
@@ -117,18 +124,23 @@ class ComputeLensDynamics:
             r_max = []
             
             # Run through the tiff stack
-            for ii in tqdm(iterator):
+            for ii in iterator:
                 # Get image from stack
                 image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
                 
                 # Detects edges with subpixel accuracy
                 coords_subpix = self.dp.detect_edges(image)
                 
-                # Get the maximum from the coordinates (by fitting a spline)
-                x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
+                try:
+                    # Get the maximum from the coordinates (by fitting a spline)
+                    x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
                 
-                # Append the maxima
-                r_max.append([x_max, y_max])
+                    # Append the maxima
+                    r_max.append([x_max, y_max])
+                except:
+                    plt.figure()
+                    plt.imshow(image)
+                    break
         
         return r_max
     

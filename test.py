@@ -32,21 +32,21 @@ YMAX = None
 image_paths, _ = hp.load_files(path)
 image = hp.load_from_stack(image_paths[0], 85)[YMIN:YMAX, XMIN:XMAX]
 
-t_init = time.time()
-dpt.is_connected(image)
-t_final1 = time.time() - t_init
-print('Edge detection run took: ' + str(t_final1 * 1e3) + ' ms')
+# t_init = time.time()
+# dpt.is_connected(image)
+# t_final1 = time.time() - t_init
+# print('Edge detection run took: ' + str(t_final1 * 1e3) + ' ms')
 
-plt.figure()
-plt.imshow(image)
+# plt.figure()
+# plt.imshow(image)
 
-contours = dpt.contour_edges(image)
-t_init = time.time()
-x_max, y_max = dpt.find_edge_extrema(image, contours)
-t_final2 = time.time() - t_init
-print('Maximum finding run took: ' + str(t_final2 * 1e3) + ' ms')
+# contours = dpt.contour_edges(image)
+# t_init = time.time()
+# x_max, y_max = dpt.find_edge_extrema(image, contours)
+# t_final2 = time.time() - t_init
+# print('Maximum finding run took: ' + str(t_final2 * 1e3) + ' ms')
 
-print('Total time of: ' + str((t_final1 + t_final2) * 1e3) + ' ms')
+# print('Total time of: ' + str((t_final1 + t_final2) * 1e3) + ' ms')
     
 # plt.figure()
 # plt.imshow(image, cmap='gray')
@@ -68,7 +68,40 @@ print('Total time of: ' + str((t_final1 + t_final2) * 1e3) + ' ms')
 cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, view='top')
 r_max = cpd.get_R()
 
+#%% Plot maxima
+def power_law(A, x, p):
+    return A * (x/x[0])**(p)
 
+image_paths, _ = hp.load_files(path)
+
+plt.figure()
+plt.close('all')
+
+maxima = r_max[0]
+lower_max = np.asarray(maxima[0])
+higher_max = np.asarray(maxima[1])
+
+p1_max_prev = lower_max
+p2_max_prev = higher_max
+p1_max = []
+p2_max = []
+for ii in range(15, len(r_max) - 25):
+    maxima = r_max[ii]
+    lower_max = np.asarray(maxima[0])
+    higher_max = np.asarray(maxima[1])
+
+    p1_max.append(np.linalg.norm(p1_max_prev - lower_max))
+    p2_max.append(np.linalg.norm(p2_max_prev - higher_max))
+
+x_ana = np.arange(0, len(p1_max)) * 1e-5
+
+plt.figure()
+plt.loglog(x_ana[10:20], power_law(5, x_ana[10:20], 1/2))
+plt.loglog(x_ana, p1_max, '.-')
+plt.ylim([1e0, 1e3])
+plt.figure()
+plt.loglog(x_ana, p2_max, '.-')
+plt.ylim([1e0, 1e3])
 
 #%% Plot the maxima
 plt.close('all')

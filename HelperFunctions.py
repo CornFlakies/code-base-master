@@ -29,7 +29,7 @@ def load_from_stack(input_file, frame):
 def load_files(input_dir, header='tif'):
     '''
     Helper function used to get string array of all files with header 
-    in supplied directory. Supply the header with the preceding dot
+    in supplied directory. Supply the header without the preceding dot
     '''
     
     # Load in image paths
