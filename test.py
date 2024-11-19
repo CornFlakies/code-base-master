@@ -65,7 +65,7 @@ image = hp.load_from_stack(image_paths[0], 85)[YMIN:YMAX, XMIN:XMAX]
 # plt.figure()
 # plt.plot(xsp, spline.derivative()(xsp), '-', color='blue')
 
-cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, view='top')
+cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, framestart=('stack 1', 90), view='top')
 r_max = cpd.get_R()
 
 #%% Plot maxima
@@ -74,34 +74,38 @@ def power_law(A, x, p):
 
 image_paths, _ = hp.load_files(path)
 
-plt.figure()
 plt.close('all')
 
 maxima = r_max[0]
 lower_max = np.asarray(maxima[0])
 higher_max = np.asarray(maxima[1])
-
-p1_max_prev = lower_max
-p2_max_prev = higher_max
+lower_max_init = lower_max
+higher_max_init = higher_max
 p1_max = []
 p2_max = []
-for ii in range(15, len(r_max) - 25):
+
+plt.figure()
+for ii in range(1, len(r_max)):
     maxima = r_max[ii]
     lower_max = np.asarray(maxima[0])
     higher_max = np.asarray(maxima[1])
 
-    p1_max.append(np.linalg.norm(p1_max_prev - lower_max))
-    p2_max.append(np.linalg.norm(p2_max_prev - higher_max))
-
+    p1_max.append(higher_max)
+    p2_max.append(lower_max)
+    plt.xlim([0, 300])
+    plt.plot(higher_max[0], higher_max[1], '.', color='blue')
+    plt.plot(higher_max[0], lower_max[1], '.', color='red')
+    
 x_ana = np.arange(0, len(p1_max)) * 1e-5
 
 plt.figure()
 plt.loglog(x_ana[10:20], power_law(5, x_ana[10:20], 1/2))
-plt.loglog(x_ana, p1_max, '.-')
-plt.ylim([1e0, 1e3])
+plt.loglog(x_ana, np.linalg.norm(p1_max), '.-')
+# plt.ylim([1e0, 1e3])
 plt.figure()
-plt.loglog(x_ana, p2_max, '.-')
-plt.ylim([1e0, 1e3])
+plt.loglog(x_ana[10:20], power_law(5, x_ana[10:20], 1/2))
+plt.loglog(x_ana, np.linalg.norm(p2_max), '.-')
+# plt.ylim([1e0, 1e3])
 
 #%% Plot the maxima
 plt.close('all')
