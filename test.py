@@ -21,6 +21,8 @@ path = "C:\\Users\\coena\\WORK\\master\\images\\side_top_view_video1_20240919_17
 # path = "C:\\Users\\coena\\WORK\\master\\images\\24-09-2024_mineral_oil\\coalescence_95mPas_video6_20240909_111139"
 # path2 = "C:\\Users\\coena\\OneDrive - University of Twente\\universiteit\\master\\master_project\\WORK\\images\\test_videos\\coalescence_95mPas_video6_20240909_151353"
 path = "C:\\Users\\coena\\WORK\\master\\images\\31-10-2024_dodecane\\31-10-2024_set2\\top_nd_side_coalescence_9_nice\\top_view"
+# path = "C:\\Users\\Coen Arents\\Desktop\\measurements\\31-10-2024_set2\\top_nd_side_coalescence_9_nice\\top_view"
+path = "C:\\Users\\Coen Arents\\Desktop\\measurements\\31-10-2024_set2\\top_nd_side_coalescence_10_nice\\top_view"
 # path = "C:\\Users\\coena\\WORK\\master\\images\\31-10-2024_dodecane\\31-10-2024_set2\\top_nd_side_coalescence_9_nice\\side_view"
 
 # Determine window of interest
@@ -28,9 +30,6 @@ XMIN = 0
 XMAX = None
 YMIN = 0
 YMAX = None
-
-image_paths, _ = hp.load_files(path)
-image = hp.load_from_stack(image_paths[0], 85)[YMIN:YMAX, XMIN:XMAX]
 
 # t_init = time.time()
 # dpt.is_connected(image)
@@ -65,14 +64,19 @@ image = hp.load_from_stack(image_paths[0], 85)[YMIN:YMAX, XMIN:XMAX]
 # plt.figure()
 # plt.plot(xsp, spline.derivative()(xsp), '-', color='blue')
 
-cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, framestart=('stack 1', 90), view='top')
+framestart=70
+image_paths, _ = hp.load_files(path)
+image = hp.load_from_stack(image_paths[0], framestart)[YMIN:YMAX, XMIN:XMAX]
+# plt.figure()
+# plt.imshow(image)
+
+cpd = ComputeLensDynamics(path, XMIN, XMAX, YMIN, YMAX, framestart=('stack 1', framestart), view='top')
 r_max = cpd.get_R()
+splines = cpd.get_splines()
 
 #%% Plot maxima
 def power_law(A, x, p):
     return A * (x/x[0])**(p)
-
-image_paths, _ = hp.load_files(path)
 
 plt.close('all')
 
@@ -81,31 +85,53 @@ lower_max = np.asarray(maxima[0])
 higher_max = np.asarray(maxima[1])
 lower_max_init = lower_max
 higher_max_init = higher_max
+
+maxima = r_max[-1]
+lower_max = np.asarray(maxima[0])
+higher_max = np.asarray(maxima[1])
+higher_max_final  = np.asarray(maxima[0])
+lower_max_final = np.asarray(maxima[1])
 p1_max = []
 p2_max = []
 
 plt.figure()
-for ii in range(1, len(r_max)):
+plt.imshow(image)
+for ii in range(len(r_max)):
     maxima = r_max[ii]
     lower_max = np.asarray(maxima[0])
     higher_max = np.asarray(maxima[1])
 
-    p1_max.append(higher_max)
-    p2_max.append(lower_max)
+    p1_max.append(np.linalg.norm((higher_max - higher_max_init) / higher_max_final))
+    p2_max.append(np.linalg.norm((lower_max - lower_max_init) / higher_max_final))
+    
+    # p1_max.append(np.abs(lower_max[1] - lower_max_init[1]))
+    # p2_max.append(np.abs(higher_max[1] - higher_max_init[1]))
     plt.xlim([0, 300])
     plt.plot(higher_max[0], higher_max[1], '.', color='blue')
     plt.plot(higher_max[0], lower_max[1], '.', color='red')
     
-x_ana = np.arange(0, len(p1_max)) * 1e-5
+x_ana = np.arange(0, len(r_max)) / 100000
 
 plt.figure()
-plt.loglog(x_ana[10:20], power_law(5, x_ana[10:20], 1/2))
-plt.loglog(x_ana, np.linalg.norm(p1_max), '.-')
-# plt.ylim([1e0, 1e3])
+plt.loglog(x_ana[1:], power_law(p1_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')
+plt.loglog(x_ana[1:], power_law(p1_max[1], x_ana[1:], 1), '--', color='black', label=r'$r \sim t$')
+plt.loglog(x_ana, p1_max, '.-', label='data')
+plt.title('Neck radius as a function of time')
+plt.legend()
+plt.ylim([1e0, 10**(5/2)])
+plt.xlim([1e-5, 1e-3])
+plt.xlabel('t(s)')
+plt.ylabel(r'$r_0(t) / R$')
 plt.figure()
-plt.loglog(x_ana[10:20], power_law(5, x_ana[10:20], 1/2))
-plt.loglog(x_ana, np.linalg.norm(p2_max), '.-')
-# plt.ylim([1e0, 1e3])
+plt.loglog(x_ana[1:], power_law(p2_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')
+plt.loglog(x_ana[1:], power_law(p2_max[1], x_ana[1:], 1), '--', color='black', label=r'$r \sim t$')
+plt.loglog(x_ana, p2_max, '.-', label='data')
+plt.title('Neck radius as a function of time')
+plt.legend()
+plt.xlim([1e-5, 1e-3])
+plt.ylim([1e0, 10**(5/2)])
+plt.xlabel('t(s)')
+plt.ylabel(r'$r_0(t) / R$')
 
 #%% Plot the maxima
 plt.close('all')

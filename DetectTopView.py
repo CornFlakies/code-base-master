@@ -11,7 +11,6 @@ from scipy import optimize
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.interpolate import CubicSpline
-from scipy.interpolate import UnivariateSpline
 from skimage.measure import find_contours
 
 
@@ -21,14 +20,6 @@ def connectedEdges(c):
     '''
     if (np.linalg.norm(c[0] - c[-1]) < 10):
         return True
-
-def sortCont(c):
-    '''
-    Sort contour from lowest to highest x-values 
-    '''
-    c[:, 0] = c[np.argsort(c[:, 1]), 0]
-    c[:, 1] = c[np.argsort(c[:, 1]), 1]
-    return c
 
 def contour_edges(image):
     '''
@@ -72,8 +63,8 @@ def canny_edges(image):
 def detect_edges(image):
     '''
     Takes a single (8-bit, grayscale) image and detects the edge(s) of the droplets.
-    To get supbixel accuracy, a Gaussian interpolation is done along the edge pixels
-    detected by a Canny edge detector.
+    Contour finding already ensures subpixel accuracy, do be careful though, 
+    inhomogeneous background illumination messes with the contour finding algorithm
     '''
     # Get contours
     contours = find_contours(image)
@@ -112,105 +103,97 @@ def find_edge_extrema(image, contours):
     is then used to get the maximum location of the droplet bridge
     '''
     
-    # # Get the padding of the positively curved line around the maximum
-    # def getPadding(c, idx_max):
-    #     pad = 0
-    #     ii = idx_max
-    #     # print(c[:, 1])
-    #     # Find the strictly decreasing points 
-    #     while ii < (len(c[:, 1]) - 1):
-    #         if (c[ii, 1]) < (c[ii + 1, 1]):
-    #             pad += 1
-    #             ii += 1
-    #         else:
-    #             break
-    #     pad_f = pad
-    #     pad = 0
-    #     ii = idx_max
-    #     # Find the strictly decreasing points
-    #     while ii > 0:
-    #         if (c[ii, 1] > c[ii - 1, 1]):
-    #             pad += 1
-    #             ii -= 1
-    #         else:
-    #             break
-    #     pad_b = pad
-    #     return pad_f, pad_b
+    # Get the padding of the positively curved line around the maximum
+    def getPaddingMax(c, idx_max):
+        pad = 0
+        ii = idx_max
+        # print(c[:, 1])
+        # Find the strictly decreasing points
+        while ii < (len(c[:, 1]) - 1):
+            if (c[ii, 1]) > (c[ii + 1, 1]):
+                pad += 1
+                ii += 1
+            else:
+                break
+        pad_f = pad
+        pad = 0
+        ii = idx_max
+        # Find the strictly decreasing points
+        while ii > 0:
+            if (c[ii, 1] < c[ii - 1, 1]):
+                pad += 1
+                ii -= 1
+            else:
+                break
+        pad_b = pad
+        return pad_f, pad_b
     
-    def getCenter(c, idx_max):
-        from scipy.signal import savgol_filter
-        cdd = np.diff(savgol_filter(c[:, 0], window_length=4, polyorder=2), n=2)
-        
-        def using_clump(a):
-            return [a[s] for s in np.ma.clump_unmasked(np.ma.masked_invalid(a))]
-
-        plt.figure()
-        plt.plot(cdd, '.-')
-        plt.figure()
-        plt.plot(np.abs(cdd)/cdd.max(), '.-')
-        
-        cdd_idx = np.where(np.abs(cdd)/cdd.max() < 1e-1, False, True)
-        cdd_idx = np.append([False, False], cdd_idx)
-        c_x = np.where(cdd_idx == False, c[:, 1], np.nan)
-        c_y = np.where(cdd_idx == False, c[:, 0], np.nan)
-        
-        c_x_clumps = using_clump(c_x)
-        c_y_clumps = using_clump(c_y)
-        
-        length = 0
-        for clump_x, clump_y in zip(c_x_clumps, c_y_clumps):
-            if len(clump_x) > length:
-                c_x = clump_x
-                c_y = clump_y
-                
-        plt.figure()
-        plt.plot(c_x, c_y)
-        
-        plt.figure()
-        plt.plot(c[cdd_idx, 1], c[cdd_idx, 0], '.-')
+    # Get the padding of the positively curved line around the maximum
+    def getPaddingMin(c, idx_max):
+        pad = 0
+        ii = idx_max
+        # print(c[:, 1])
+        # Find the strictly decreasing points
+        while ii < (len(c[:, 1]) - 1):
+            if (c[ii, 1]) < (c[ii + 1, 1]):
+                pad += 1
+                ii += 1
+            else:
+                break
+        pad_f = pad
+        pad = 0
+        ii = idx_max
+        # Find the strictly increasing points
+        while ii > 0:
+            if (c[ii, 1] > c[ii - 1, 1]):
+                pad += 1
+                ii -= 1
+            else:
+                break
+        pad_b = pad
+        return pad_f, pad_b
         
     
     # Get extremum of curved line
-    def getMax(c, idx_max):
-        
-        def poly(x, x0, A, B):
+    def getMax(c, idx_max, ext):
+        def poly(x, x0, A, B, C):
             return A + B * (x - x0)**2
         
-        plt.figure()
-        plt.plot(c[:, 1], c[:, 0], '.-')
+        def semicircle(x, x0, y0, r):
+            return y0 + np.sqrt(r - (x - x0)**2)
         
-        getCenter(c, idx_max)
+        if (ext == 'max'):
+            pad_f, pad_b = getPaddingMax(c, idx_max)
+        elif (ext == 'min'):
+            pad_f, pad_b = getPaddingMin(c, idx_max)
         
-        # x = c[(idx_max - pad_b):(idx_max + pad_f), 1]
-        # y = c[(idx_max - pad_b):(idx_max + pad_f), 0]
-
-        popt, pcov = curve_fit(poly, x, y)
-
-        plt.figure()
-        # plt.plot(x_ana, poly(x_ana, *popt))
-        plt.plot(x, y, '.-')
-        plt.plot(c[:, 1], c[:, 0])
-        print(popt)
+        x = c[(idx_max - pad_b):(idx_max + pad_f), 1]
+        y = c[(idx_max - pad_b):(idx_max + pad_f), 0]
+        x_ana = np.linspace(x[0], x[-1], 100)
         
         spline_xmax = None
         spline_ymax = None
-
-        # spline = CubicSpline(x, y)
-        # spline_xmax = spline.derivative().roots()
-        # spline_ymax = spline(spline_xmax)
         
-        # if len(spline_xmax) > 1:
-        #     closest_max = np.abs(spline_ymax - c[idx_max, 0])
-        #     idx = np.argmin(closest_max)
-        # else:
-        #     idx = 0
+        y = y[np.argsort(x)]
+        x = x[np.argsort(x)]
+        spline = CubicSpline(x, y)
+        spline_xmax = spline.derivative().roots()
+        spline_ymax = spline(spline_xmax)
         
-        # spline_xmax = spline_xmax[idx]
-        # spline_ymax = spline_ymax[idx]
+        if len(spline_xmax) > 1:
+            closest_max = np.abs(spline_ymax - c[idx_max, 0])
+            idx = np.argmin(closest_max)
+        else:
+            idx = 0
+        
+        spline_xmax = spline_xmax[idx]
+        spline_ymax = spline_ymax[idx]
         return spline_xmax, spline_ymax
     
     # Log the maxima of the two contours
     c_max = []
+    
+    plt.imshow(image,cmap='gray')
     
     # Find midline, such that contours above and below can be identified
     midline = image.shape[0] // 2
@@ -222,13 +205,16 @@ def find_edge_extrema(image, contours):
             continue
         # If contour above midline
         if all(ct) and not all(cb):
-            idx_max = np.argmax(c[:, 0])
-            cmax = getMax(c, idx_max)
+            idx_ext = np.argmax(c[:, 0])
+            cmax = getMax(c, idx_ext, ext='max')
             c_max.append(cmax)
+            plt.plot(c[:, 1], c[:, 0], color='red')
+            plt.plot(cmax[0], cmax[1], 'o', color='blue')
         # If contour below midline
         elif all(cb) and not all(ct):
-            idx_max = np.argmin(c[:, 0])
-            cmin = getMax(c, idx_max)
+            idx_ext = np.argmin(c[:, 0])
+            cmin = getMax(c, idx_ext, ext='min')
             c_max.append(cmin)
-
+            plt.plot(c[:, 1], c[:, 0], color='red')
+            plt.plot(cmin[0], cmin[1], 'o', color='blue')
     return c_max

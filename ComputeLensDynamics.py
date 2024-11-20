@@ -142,11 +142,14 @@ class ComputeLensDynamics:
             print(f"{stack}/{len(self.stack_list)}")    
             
             # Iterator to go through stack
-            iterator = range(stack_start, stack_end)
+            iterator = range(90, 91)
             print(iterator)
             
             # Define list to store maxima
             r_max = []
+            
+            # Splines list
+            self.splines = []
             
             # Run through the tiff stack
             for ii in iterator:
@@ -156,18 +159,20 @@ class ComputeLensDynamics:
                 # Detects edges with subpixel accuracy
                 coords_subpix = self.dp.detect_edges(image)
                 
-                x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
-                    
-                # try:
-                #     # Get the maximum from the coordinates (by fitting a spline)
-                #     x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
-                #     r_max.append((x_max, y_max))
-                #     # plt.plot(x_max[0], x_max[1], '.', color='green')
-                #     # plt.plot(y_max[0], y_max[1], '.', color='red')
-                #     break
-                # except:
-                #     break
-        
+                fig = plt.figure()
+                
+                # x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
+                try:
+                    # Get the maximum from the coordinates (by fitting a spline)
+                    x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
+                    r_max.append((x_max, y_max))
+                    # self.splines.append(spline)
+                    # plt.plot(x_max[0], x_max[1], '.', color='green')
+                    # plt.plot(y_max[0], y_max[1], '.', color='red')
+                
+                except:
+                    break
+                
         return r_max
     
     def check_window(self, XMIN, XMAX, YMIN, YMAX):
@@ -204,4 +209,8 @@ class ComputeLensDynamics:
             self.YMAX = YMAX
         else:
             raise Exception(f'ERROR: YMAX value of {YMAX} is invalid')
+            
+    def get_splines(self):
+        return self.splines
+        
     
