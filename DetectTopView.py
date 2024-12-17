@@ -193,8 +193,6 @@ def find_edge_extrema(image, contours):
     # Log the maxima of the two contours
     c_max = []
     
-    plt.imshow(image,cmap='gray')
-    
     # Find midline, such that contours above and below can be identified
     midline = image.shape[0] // 2
     for ii, c in enumerate(contours):
@@ -208,13 +206,14 @@ def find_edge_extrema(image, contours):
             idx_ext = np.argmax(c[:, 0])
             cmax = getMax(c, idx_ext, ext='max')
             c_max.append(cmax)
-            plt.plot(c[:, 1], c[:, 0], color='red')
-            plt.plot(cmax[0], cmax[1], 'o', color='blue')
+            # plt.plot(c[:, 1], c[:, 0], color='red')
+            # plt.plot(cmax[0], cmax[1], 'o', color='blue')
         # If contour below midline
         elif all(cb) and not all(ct):
             idx_ext = np.argmin(c[:, 0])
             cmin = getMax(c, idx_ext, ext='min')
             c_max.append(cmin)
-            plt.plot(c[:, 1], c[:, 0], color='red')
-            plt.plot(cmin[0], cmin[1], 'o', color='blue')
+            # plt.plot(c[:, 1], c[:, 0], color='red')
+            # plt.plot(cmin[0], cmin[1], 'o', color='blue')
+            
     return c_max

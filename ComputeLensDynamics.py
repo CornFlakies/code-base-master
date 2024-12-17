@@ -102,8 +102,6 @@ class ComputeLensDynamics:
                 connected = self.dp.is_connected(image)
                 if connected:
                     # Record frame, save to stack
-                    # plt.figure()
-                    # plt.imshow(image)
                     print(f'    found connection in {stack} frame {ii}!')
                     stack_start = ii
                     break
@@ -142,7 +140,7 @@ class ComputeLensDynamics:
             print(f"{stack}/{len(self.stack_list)}")    
             
             # Iterator to go through stack
-            iterator = range(90, 91)
+            iterator = range(stack_start, stack_end)
             print(iterator)
             
             # Define list to store maxima
@@ -152,23 +150,19 @@ class ComputeLensDynamics:
             self.splines = []
             
             # Run through the tiff stack
-            for ii in iterator:
+            for ii in tqdm(iterator):
                 # Get image from stack
                 image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
                 
                 # Detects edges with subpixel accuracy
                 coords_subpix = self.dp.detect_edges(image)
                 
-                fig = plt.figure()
-                
-                # x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
                 try:
                     # Get the maximum from the coordinates (by fitting a spline)
                     x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
+                    
+                    # Log r_max
                     r_max.append((x_max, y_max))
-                    # self.splines.append(spline)
-                    # plt.plot(x_max[0], x_max[1], '.', color='green')
-                    # plt.plot(y_max[0], y_max[1], '.', color='red')
                 
                 except:
                     break
@@ -209,8 +203,5 @@ class ComputeLensDynamics:
             self.YMAX = YMAX
         else:
             raise Exception(f'ERROR: YMAX value of {YMAX} is invalid')
-            
-    def get_splines(self):
-        return self.splines
         
     
