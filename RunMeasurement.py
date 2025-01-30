@@ -5,83 +5,32 @@ Created on Thu Nov 21 15:35:01 2024
 @author: coena
 """
 
-import time
+import os
+import re
+import yaml
 import numpy as np
 import skimage as sk
 from tqdm import tqdm
-import DetectTopView as dpt
-from CalibrateImages import CalibrateImages
-import DetectSideView as dps
+import InitImage as iim
 import HelperFunctions as hp
 import matplotlib.pyplot as plt
 from ComputeLensDynamics import ComputeLensDynamics
 
+plt.close('all')
 
-# calib_path = "D:\\masterproject\\images\\dodecane_31102024\\set1\\"
-# calib_type = "dots"
-# spacing = 0.125
-# path_top = "D:\\masterproject\\images\\dodecane_31102024\\set1\\top_view"
-# path_side = "D:\\masterproject\\images\\dodecane_31102024\\set1\\side_view"
+    
+# Define location measurement suite
+abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 
-# calib_path = "D:\\masterproject\\images\\dodecane_31102024\\set2\\"
-# calib_type = "dots"
-# spacing = 0.125
-# path_top = "D:\\masterproject\images\\dodecane_31102024\set2\\top_nd_side_coalescence_9_nice\\top_view"
-# path_side = "D:\\masterproject\images\\dodecane_31102024\set2\\top_nd_side_coalescence_9_nice\\side_view"
-
-# calib_path = "D:\\masterproject\\images\\dodecane_31102024\\set2\\"
-# calib_type = "dots"
-# spacing = 0.125
-# path_top = "D:\\masterproject\images\\dodecane_31102024\set2\\top_nd_side_coalescence_10_nice\\top_view"
-# path_side = "D:\\masterproject\images\\dodecane_31102024\set2\\top_nd_side_coalescence_10_nice\\side_view"
-
-calib_path = "D:\\masterproject\\images\\dodecane_06122024\\set1\"
-calib_type = "lines"
-spacing = 0.125
-path_top = "D:\\masterproject\\images\\dodecane_06122024\\set1\\meas2\\"
-path_side = "D:\\masterproject\\images\\dodecane_06122024\\set1\\meas2\\"
-
-# Live?
 isLive = True
+if isLive:
+    fps = 1e5
+    iim.create_config_from_suite(abs_path, fps)
 
-# Determine window of interest
-XMIN = 0
-XMAX = None
-YMIN = 0
-YMAX = None
 
-# Get framestart
-framestart=80
 
-# Define fps
-fps = 1e5
 
-# Define conversion factors
-alpha = 3.5e-6 #m
-
-if isLive is True:
-    # Load calib path
-    calib_paths, _ = hp.load_files(calib_path)
-    calib_img = sk.io.imread(calib_paths[0])
-    
-    ci = CalibrateImages(calib_img, spacing)
-    alpha = ci.compute_dot_distances()
-
-    # Run lens dynamics code, get the relevant view
-    cpd = ComputeLensDynamics(path_top, XMIN, XMAX, YMIN, YMAX, framestart=('stack 1', framestart), view='top')
-    r_max = cpd.get_R()
-    
-    # Run lens dynamics get the side view
-    cpd = ComputeLensDynamics(path_side, XMIN, XMAX, YMIN, YMAX, framestart=('stack 1', framestart), view='side')
-    r_max_side = cpd.get_R()
-
-np.save(path_top, r_max)
-np.save(path_side, r_max_side)
-
-if isLive is False:
-    r_max = np.open(path_top+'.npy')
-
-#%%
+#%% Plot powerlaw
 def power_law(A, x, p):
     return A * (x/x[0])**(p)
 

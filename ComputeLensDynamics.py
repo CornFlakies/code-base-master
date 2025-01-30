@@ -7,8 +7,8 @@ Created on Tue Sep 24 09:40:15 2024
 import os
 import numpy as np
 from tqdm import tqdm
-import DetectSideView as dps
-import DetectTopView as dpt
+import DetectSideView as dsv
+import DetectTopView as dtv
 import HelperFunctions as hp
 import matplotlib.pyplot as plt
 
@@ -17,9 +17,9 @@ class ComputeLensDynamics:
     def __init__(self, input_dir, XMIN=0, XMAX=None, YMIN=0, YMAX=None, framestart=('stack 1', 0), view='side', edge_detection='canny'):        
         print('\nInitializing...')
         if (view == 'side'):
-            self.dp = dps
+            self.dv = dsv
         elif (view == 'top'):
-            self.dp = dpt
+            self.dv = dtv
         else:
             raise Exception('Invalid view argument')
         
@@ -41,7 +41,7 @@ class ComputeLensDynamics:
         print('\nChecking window ...')
         self.check_window(XMIN, XMAX, YMIN, YMAX)
         
-        if (framestart == ('stack 1', 0)):
+        if (framestart == None):
             print('\nFinding connecting frame ...')
             self.find_connecting_frame()
         else:
@@ -55,8 +55,7 @@ class ComputeLensDynamics:
         Routine used to set the starting frame and starting stack
         '''
         stack_to_pop = []
-        for stack in self.stack_list:
-            
+        for stack in self.stack_list: 
             # Get stack info
             stack_start = self.stack_list[stack][0][0]
             stack_end = self.stack_list[stack][0][1]
@@ -77,7 +76,7 @@ class ComputeLensDynamics:
     
     def find_connecting_frame(self):
         '''
-        function runs through all images in all stacks and finds where the 
+        Function runs through all images in all stacks and finds where the 
         droplets first connect, and adjusts the stack_list accordingly
         '''
         # Define list of stacks to pop
@@ -85,7 +84,6 @@ class ComputeLensDynamics:
         
         # Iterate through stack
         for stack in self.stack_list:
-            
             # Get stack info
             stack_start = self.stack_list[stack][0][0]
             stack_end = self.stack_list[stack][0][1]
@@ -99,7 +97,7 @@ class ComputeLensDynamics:
             for ii in iterator:
                 image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
                 # Find connecting frame
-                connected = self.dp.is_connected(image)
+                connected = self.dv.is_connected(image)
                 if connected:
                     # Record frame, save to stack
                     print(f'    found connection in {stack} frame {ii}!')
@@ -123,7 +121,7 @@ class ComputeLensDynamics:
     
     def get_R(self):
         '''
-        Big routine which is ran to get the side view height over time
+        Routine which is ran to get the side or top view height over time
         '''
         
         print('\nComputing R ...')
@@ -155,11 +153,11 @@ class ComputeLensDynamics:
                 image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
                 
                 # Detects edges with subpixel accuracy
-                coords_subpix = self.dp.detect_edges(image)
+                coords_subpix = self.dv.detect_edges(image)
                 
                 try:
                     # Get the maximum from the coordinates (by fitting a spline)
-                    x_max, y_max = self.dp.find_edge_extrema(image, coords_subpix)
+                    x_max, y_max = self.dv.find_edge_extrema(image, coords_subpix)
                     
                     # Log r_max
                     r_max.append((x_max, y_max))

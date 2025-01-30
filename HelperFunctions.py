@@ -13,6 +13,12 @@ import os
 import numpy as np
 import skimage as sk
 
+def normalize_img(img):
+    '''
+    Normalize img to unity
+    '''
+    return (img - img.min()) / img.max()
+
 def get_stack_size(input_file):
     '''
     Gets the size of a tiff stack
@@ -31,7 +37,6 @@ def load_files(input_dir, header='tif'):
     Helper function used to get string array of all files with header 
     in supplied directory. Supply the header without the preceding dot
     '''
-    
     # Load in image paths
     images = np.sort(os.listdir(input_dir))
     
@@ -45,6 +50,16 @@ def load_files(input_dir, header='tif'):
             image_paths.append(os.path.join(input_dir, entry))
             
     return np.sort(image_paths), np.sort(image_names)
+
+def file_contains_substring(input_string, substring):
+    '''
+    Function checks if string contains at least one occurence of substring,
+    returns True if so, False if not
+    '''
+    if (input_string.find(substring) == -1):
+        return False
+    else:
+        return True
 
 def create_output_dir(output_folder):
     '''
@@ -76,6 +91,5 @@ def print_directory_tree(input_dir, indent_level=0):
         for f in files:
             print(f"{subindent}|-- {f}")
 
-def get_dir_tree(input_dir):
-    return None
+
     
