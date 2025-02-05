@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 class ComputeLensDynamics:
-    def __init__(self, input_dir, XMIN=0, XMAX=None, YMIN=0, YMAX=None, framestart=('stack 1', 0), view='side', edge_detection='canny'):        
+    def __init__(self, input_dir, XMIN=0, XMAX=None, YMIN=0, YMAX=None, framestart=('stack 1', 0), view='side'):        
         print('\nInitializing...')
         if (view == 'side'):
             self.dv = dsv
@@ -161,7 +161,7 @@ class ComputeLensDynamics:
                     
                     # Log r_max
                     r_max.append((x_max, y_max))
-                
+                    
                 except:
                     break
                 

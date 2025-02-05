@@ -67,7 +67,7 @@ def detect_edges(image):
     inhomogeneous background illumination messes with the contour finding algorithm
     '''
     # Get contours
-    contours = find_contours(image)
+    contours = contour_edges(image)
     
     return contours
 
@@ -194,26 +194,29 @@ def find_edge_extrema(image, contours):
     c_max = []
     
     # Find midline, such that contours above and below can be identified
-    midline = image.shape[0] // 2
+    com = []
+    if len(contours) > 1:
+        for c in contours:
+            com.append(np.mean(c[:, 0]))
+    midline = np.sum(com) / len(com)
+    print(midline)
+    
     for ii, c in enumerate(contours):
-        ct = c[:, 0] < midline
-        cb = c[:, 0] > midline
+        ct = c[:, 0] < (midline + 20)
+        cb = c[:, 0] > (midline - 20)
         # Remove the circular contour crossing the midline
-        if (any(cb) and any(ct)) or (connectedEdges(c)):
+        if (any(cb) and any(ct)):
             continue
         # If contour above midline
         if all(ct) and not all(cb):
             idx_ext = np.argmax(c[:, 0])
             cmax = getMax(c, idx_ext, ext='max')
             c_max.append(cmax)
-            # plt.plot(c[:, 1], c[:, 0], color='red')
-            # plt.plot(cmax[0], cmax[1], 'o', color='blue')
+            print(cmax)
         # If contour below midline
         elif all(cb) and not all(ct):
             idx_ext = np.argmin(c[:, 0])
             cmin = getMax(c, idx_ext, ext='min')
             c_max.append(cmin)
-            # plt.plot(c[:, 1], c[:, 0], color='red')
-            # plt.plot(cmin[0], cmin[1], 'o', color='blue')
-            
+            print(cmin)
     return c_max

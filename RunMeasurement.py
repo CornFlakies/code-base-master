@@ -22,12 +22,12 @@ plt.close('all')
 # Define location measurement suite
 abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 
+# If the config files do not exist, create new ones.
 isLive = True
 if isLive:
     fps = 1e5
     iim.create_config_from_suite(abs_path, fps)
-
-
+    
 
 
 #%% Plot powerlaw

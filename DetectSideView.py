@@ -57,22 +57,26 @@ def canny_subpix(image, edge_coords):
     coords_subpix = np.zeros(edge_coords.shape, dtype=float)
     
     # padding is taken from the left and right of the images
-    padding = image.shape[1] // 6
+    padding = 40
 
     for ii, coord in enumerate(edge_coords):
         # Separate x- and y-coordinates for readability
         x = coord[0]
         y = coord[1]
         
+        lower_pad = max(y - padding, 0)
+        upper_pad = min(y + padding, image.shape[0])
+        
         # Get region of interest from the image row
-        image_row = image[y-padding:y+padding, x]
+        image_row = image[lower_pad:upper_pad, x]
         
         # Compute gradient
         grad = np.abs(np.gradient(image_row))
-        params, _ = curve_fit(gaussian, np.arange(0, len(grad)), grad)
-
+        p0 = [np.max(image_row), len(image_row) / 2, 1] # make some guess params
+        params, _ = curve_fit(gaussian, np.arange(0, len(grad)), grad, p0)
+        
         # Store subpixel edge to array
-        coords_subpix[ii] = [coord[0], coord[1]  - padding + params[1]]
+        coords_subpix[ii] = [lower_pad + params[1], coord[0]]
 
     return coords_subpix
 
@@ -82,7 +86,8 @@ def detect_edges(image):
     To get supbixel accuracy, a Gaussian interpolation is done along the edge pixels
     detected by a Canny edge detector.
     '''
-    # Get Canny edges
+    
+   # Get Canny edges
     edges = canny_edges(image)
     
     # Convert edges to coordinates
@@ -91,7 +96,7 @@ def detect_edges(image):
     # Get subpixel accuracy on the edges along the y-axis
     coords_subpix = canny_subpix(image, coords)    
 
-    return coords_subpix
+    return [coords_subpix]
 
 def is_connected(image):
     '''
@@ -126,45 +131,38 @@ def find_edge_extrema(image, coords_edges):
     containing a 2nd and 4th order are fit to the data, and the resultant maximum
     from that polynomial is used to find the maxima in x and y
     '''
+    
+    c_max = []
+    for c in coords_edges:
         
-    def poly(x, x0, a, b, c):
-        return a + b*(x - x0)**2 + c*(x - x0)**4
+        def poly(x, x0, a, b, c):
+            return a + b*(x - x0)**2 + c*(x - x0)**4
+        
+        # Separate x- and y-coordinates for readability
+        x = c[:, 1]
+        y = c[:, 0]    
+        
+        # # Fit 2nd and 4th order polynomial
+        # p0 = [x[len(x)//2], 1, 1, 1]
+        # params, pcov = curve_fit(poly, x, y, p0)
     
-    # Separate x- and y-coordinates for readability
-    x = coords_edges[:, 0]
-    y = coords_edges[:, 1]    
+        # # Save maximum location
+        # x_ana = np.linspace(x[0], x[-1], 100)
+        # x_max = params[0]
+        # y_max = poly(params[0], *params)
+        
+        # fit spline 
+        spline = CubicSpline(x, y, axis=0)
+        spline_minima = spline.derivative().roots()
+        
+        # Extract root closest to the minimum value of the computed contour
+        x_loc = x[np.argmax(y)]
+        x_loc = spline_minima[np.argmin(np.abs(spline_minima - x_loc))]
+        x_max, y_max = [x_loc, spline(x_loc)]
+        
+        c_max.append([x_max, y_max])
     
-    # Fit 2nd and 4th order polynomial
-    p0 = [x[len(x)//2], 1, 1, 1]
-    params, pcov = curve_fit(poly, x, y, p0)
-    x_ana = np.linspace(x[0], x[-1], 50)
-
-    x_max = params[0]
-    y_max = poly(params[0], *params)
-    
-    return x_max, y_max
-
-
-    # Sobel gradient stuff that I will probably not use
-    def Gx():
-        return np.array([[-1, 0, 1],
-                         [-2, 0, 2],
-                         [-1, 0, 1]])
-    def Gy():
-        return np.array([[1, 2, 1],
-                         [0, 0, 0],
-                         [-1, -2, 1]])
-    
-    def matrix_convolve(matrix, kernel):
-        '''
-        Routine takes same-size matrix and kernel, both the matrix and kernel
-        are symmetric, and contain odd-numbered axes.
-        Then, it computes the convolution of the center pixel of the provided matrix
-        '''
-        acc = 0
-        for mat_val, ker_val in zip(matrix.flatten(), kernel.flatten()):
-            acc += mat_val * ker_val
-        return acc
+    return c_max
     
     
         

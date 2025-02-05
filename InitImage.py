@@ -14,6 +14,7 @@ import HelperFunctions as hp
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from skimage.measure import find_contours
+from ImageVisualizer import ImageVisualizer
 from CalibrateImages import CalibrateImages
 
 def create_config_from_suite(abs_path, fps):
@@ -52,7 +53,15 @@ def create_config_from_suite(abs_path, fps):
             R = get_drop_radii(path_init_view_img[0]) * alpha_top
             
             # User select starting frame from the batch of measurements
+            path_top_view  = os.path.join(abs_path, directory, 'top_view')
+            top_image_paths, _ = hp.load_files(path_top_view, 'tif')
+            iv = ImageVisualizer(top_image_paths[0], view='top')
+            start_frame_top, manual_points_top = iv.get_data()
             
+            path_side_view = os.path.join(abs_path, directory, 'side_view') 
+            side_image_paths, _ = hp.load_files(path_side_view, 'tif')
+            iv = ImageVisualizer(side_image_paths[0], view='side')
+            start_frame_side, manual_points_side = iv.get_data()
             
             # Dump everything into a yaml file for future data analysis
             config_data = {
@@ -63,17 +72,13 @@ def create_config_from_suite(abs_path, fps):
                     },
                 "INITIAL_PARAMETERS": {
                     "DROP_RADIUS": float(R),
-                    "INITIAL_FRAME": -1
+                    "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
+                    "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
                     }
                 }
             
             with open(os.path.join(abs_path, directory, 'config.yaml'), 'w') as file:
                 yaml.dump(config_data, file, default_flow_style=False)
-
-def define_starting_frame(path_to_images):
-    image_paths, images = hp.load_files(path_to_images, header='tif')
-    
-    
 
 def get_drop_radii(image):
     '''
