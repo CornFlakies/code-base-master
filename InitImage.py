@@ -17,6 +17,7 @@ from skimage.measure import find_contours
 from ImageVisualizer import ImageVisualizer
 from CalibrateImages import CalibrateImages
 
+
 def create_config_from_suite(abs_path, fps):
     # Define FPS of the measurements
     fps = 1e5
@@ -50,53 +51,91 @@ def create_config_from_suite(abs_path, fps):
             # Load init view images and get drop radii
             path_init_view = os.path.join(abs_path, directory, 'init_top_view')
             path_init_view_img, init_view_img = hp.load_files(path_init_view, header="tif")
-            R = get_drop_radii(path_init_view_img[0]) * alpha_top
+            init_view_img = sk.io.imread(path_init_view_img[0])
+            radii, centers = get_drop_radii(init_view_img)
+            
+            # Plot droplets and save image
+            plot_drops(radii, 
+                       centers, 
+                       init_view_img, 
+                       alpha_top, 
+                       path=os.path.join(abs_path, directory),
+                       show=False)
+            
+            # Convert Radius
+            R = np.mean(radii)
+            R *=  alpha_top
             
             # User select starting frame from the batch of measurements
-            path_top_view  = os.path.join(abs_path, directory, 'top_view')
-            top_image_paths, _ = hp.load_files(path_top_view, 'tif')
-            iv = ImageVisualizer(top_image_paths[0], view='top')
-            start_frame_top, manual_points_top = iv.get_data()
+            # Do a check if config file alread exists
+            path_dir = os.path.join(abs_path, directory)
+            path_config_file, config_file = hp.load_files(path_dir, header="yaml")
             
-            path_side_view = os.path.join(abs_path, directory, 'side_view') 
-            side_image_paths, _ = hp.load_files(path_side_view, 'tif')
-            iv = ImageVisualizer(side_image_paths[0], view='side')
-            start_frame_side, manual_points_side = iv.get_data()
-            
-            # Dump everything into a yaml file for future data analysis
-            config_data = {
-                "MEASUREMENTS_PARAMETERS": {
-                    "FPS": float(fps),
-                    "CONV_TOP_VIEW": float(alpha_top),
-                    "CONV_SIDE_VIEW": float(alpha_side),
-                    },
-                "INITIAL_PARAMETERS": {
-                    "DROP_RADIUS": float(R),
-                    "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
-                    "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
+            if (config_file != []):
+                output = []
+                with open(path_config_file[0], 'r', encoding='utf-8') as file:
+                    data = yaml.safe_load(file)
+                    print(yaml.dump(data, default_flow_style=False))
+
+                print(f'config file already exists in dir {directory}, make a new one?\n')
+                Flag = False
+                while not Flag:
+                    boolean = doConfigCreation()
+                    if boolean is None:
+                        continue
+                    else:
+                        Flag = True
+
+            if boolean:
+                # Top view
+                path_top_view  = os.path.join(abs_path, directory, 'top_view')
+                top_image_paths, _ = hp.load_files(path_top_view, 'tif')
+                iv = ImageVisualizer(top_image_paths[0], view='top')
+                start_frame_top, manual_points_top = iv.get_data()
+                # Side view
+                path_side_view = os.path.join(abs_path, directory, 'side_view') 
+                side_image_paths, _ = hp.load_files(path_side_view, 'tif')
+                iv = ImageVisualizer(side_image_paths[0], view='side')
+                start_frame_side, manual_points_side = iv.get_data()
+                
+                # Dump everything into a yaml file for future data analysis
+                config_data = {
+                    "MEASUREMENTS_PARAMETERS": {
+                        "FPS": float(fps),
+                        "CONV_TOP_VIEW": float(alpha_top),
+                        "CONV_SIDE_VIEW": float(alpha_side),
+                        },
+                    "INITIAL_PARAMETERS": {
+                        "DROP_RADIUS": float(R),
+                        "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
+                        "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
+                        }
                     }
-                }
-            
-            with open(os.path.join(abs_path, directory, 'config.yaml'), 'w') as file:
-                yaml.dump(config_data, file, default_flow_style=False)
+                
+                with open(os.path.join(abs_path, directory, 'config.yaml'), 'w', encoding="utf-8") as file:
+                    file.truncate()
+                    yaml.dump(config_data, file, default_flow_style=False)
 
 def get_drop_radii(image):
     '''
     Gets radii from the droplets in view, spits out the mean of the radii
     '''
     # Load image from path, and normalize
-    img = sk.io.imread(image)
-    img = hp.normalize_img(img)
+    img = hp.normalize_img(image)
     
     # Get contours from normalized image
     contours = find_contours(img)
     radii = []
+    centers = []
     for c in contours:
         a, b, R = circular_regression_bullock(c)
+        a = a[0]
+        b = b[0]
+        R = R[0]
         radii.append(R)
-    R = np.mean(radii)
+        centers.append([a, b])
     
-    return R
+    return radii, centers
 
 def circular_regression_bullock(c):
     '''
@@ -154,8 +193,104 @@ def circular_regression_bullock(c):
     # Return values a, b and R, transforming them back to original coordinates
     return ucvc[0] + x_hat, ucvc[1] + y_hat, np.sqrt(alpha)
                    
+def plot_drops(radii, centers, img, alpha_top, path='', show=True):
     
+    radii = np.asarray(radii, dtype=float)
+    centers = np.asarray(centers, dtype=float)
     
+    # Define circles
+    circle1 = {"center": (centers[0][0], centers[0][1]), "radius": radii[0]}
+    circle2 = {"center": (centers[1][0], centers[1][1]), "radius": radii[1]}
+    
+    circle1_patch = plt.Circle(circle1["center"], circle1["radius"], color='blue', lw=2, fill=False, label='Circle 1')
+    circle2_patch = plt.Circle(circle2["center"], circle2["radius"], color='red', lw=2, fill=False, label='Circle 2')
+    
+    mean_center_x = (centers[0][0] + centers[1][0]) / 2
+    mean_center_y = (centers[0][1] + centers[1][1]) / 2
+    
+    # Add circles to the plot
+    fig, ax = plt.subplots()
+    # Set title
+    plt.title('Two (least squares) Circles Plot')
+    # Set x- and y-labels
+    ax.set_xlabel('X [px]')
+    ax.set_ylabel('Y [px]')
+    
+    # Get maximum radius
+    radius = max(radii[0], radii[1])
+    
+    # Plot image
+    ax.imshow(img, cmap='gray')
+    
+    # Plot circles
+    ax.add_patch(circle1_patch)
+    ax.add_patch(circle2_patch)
+    
+    # Save figure
+    path1 = os.path.join(path, 'init_circles_zoom.png')
+    plt.savefig(path1)
+    
+    # Create new limits for second figure
+    ax.set_xlim([-radius*2.5 + mean_center_x, radius*2.5] + mean_center_x)
+    ax.set_ylim([-radius*2.5 + mean_center_y, radius*2.5] + mean_center_y)
+    
+    # Draw an arrow for the radius from the center1 to the edge
+    center = centers[0]
+    radius = radii[0]
+    color = 'blue'
+    
+    theta = np.pi / 2  # Angle for the radius line (can be any value)
+    arrow_x = center[0] + radius * np.cos(theta)
+    arrow_y = center[1] + radius * np.sin(theta)
+    
+    # Plot the arrow
+    ax.annotate(
+        "", xy=(arrow_x, arrow_y), xytext=center,
+        arrowprops=dict(arrowstyle="->", color=color)
+    )
+    
+    # Label the radius
+    midpoint = (1.5 * (center[0] + arrow_x) / 2, 2 * (center[1] + arrow_y) / 2)
+    radius_text = radius * alpha_top * 1e3
+    ax.text(midpoint[0], midpoint[1], rf"r $\approx$ {radius_text:0.2f} $mm$", color=color, fontsize=10)
+    
+    # Draw an arrow for the radius from the center2 to the edge
+    center = centers[1]
+    radius = radii[1]
+    color = 'red'
+    
+    theta = np.pi / 2  # Angle for the radius line (can be any value)
+    arrow_x = center[0] + radius * np.cos(theta)
+    arrow_y = center[1] + radius * np.sin(theta)
+    
+    # Plot the arrow
+    ax.annotate(
+        "", xy=(arrow_x, arrow_y), xytext=center,
+        arrowprops=dict(arrowstyle="->", color=color)
+    )
+    
+    # Label the radius
+    midpoint = (1.0 * (center[0] + arrow_x) / 2, 2 * (center[1] + arrow_y) / 2)
+    radius_text = radius * alpha_top * 1e3
+    ax.text(midpoint[0], midpoint[1], rf"r $\approx$ {radius_text:0.2f} $mm$", color=color, fontsize=10)
+    
+    if show:
+        plt.show()
+        
+    # Save figure
+    path2 = os.path.join(path, 'init_circles.png')
+    plt.savefig(path2)
+    
+def doConfigCreation():
+    patterny = re.compile(r'\b(?:yes|y)\b', re.IGNORECASE)
+    patternn = re.compile(r'\b(?:no|n)\b', re.IGNORECASE)
+    command = input('[y/n]\n')
+    if (patterny.search(command)):
+        return True
+    elif (patternn.search(command)):
+        return False
+    else:
+        return None
     
     
     

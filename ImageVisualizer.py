@@ -59,6 +59,7 @@ class ImageVisualizer:
         self.im_handle = self.ax.imshow(data, cmap='gray')
         self.update_image()
     
+        # Define button size
         bottom_button_size = [0.1, 0.1, 0.075]    
         right_button_size = [0.5, 0.1, 0.075]
     

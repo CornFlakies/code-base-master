@@ -199,7 +199,6 @@ def find_edge_extrema(image, contours):
         for c in contours:
             com.append(np.mean(c[:, 0]))
     midline = np.sum(com) / len(com)
-    print(midline)
     
     for ii, c in enumerate(contours):
         ct = c[:, 0] < (midline + 20)
@@ -212,11 +211,9 @@ def find_edge_extrema(image, contours):
             idx_ext = np.argmax(c[:, 0])
             cmax = getMax(c, idx_ext, ext='max')
             c_max.append(cmax)
-            print(cmax)
         # If contour below midline
         elif all(cb) and not all(ct):
             idx_ext = np.argmin(c[:, 0])
             cmin = getMax(c, idx_ext, ext='min')
             c_max.append(cmin)
-            print(cmin)
     return c_max

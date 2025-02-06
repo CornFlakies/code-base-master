@@ -162,7 +162,8 @@ class ComputeLensDynamics:
                     # Log r_max
                     r_max.append((x_max, y_max))
                     
-                except:
+                except Exception as exc: 
+                    print('\n' + str(exc))
                     break
                 
         return r_max

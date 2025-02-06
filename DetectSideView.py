@@ -160,9 +160,9 @@ def find_edge_extrema(image, coords_edges):
         x_loc = spline_minima[np.argmin(np.abs(spline_minima - x_loc))]
         x_max, y_max = [x_loc, spline(x_loc)]
         
-        c_max.append([x_max, y_max])
+        c_max.append([x_max, y_max[0]])
     
-    return c_max
+    return c_max[0][0], c_max[0][1]
     
     
         
