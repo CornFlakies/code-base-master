@@ -158,11 +158,10 @@ def find_edge_extrema(image, coords_edges):
         # Extract root closest to the minimum value of the computed contour
         x_loc = x[np.argmax(y)]
         x_loc = spline_minima[np.argmin(np.abs(spline_minima - x_loc))]
-        x_max, y_max = [x_loc, spline(x_loc)]
-        
-        c_max.append([x_max, y_max[0]])
-    
-    return c_max[0][0], c_max[0][1]
+        y_loc = spline(x_loc).item()
+        c_max.append((x_loc, y_loc))
+
+    return c_max
     
     
         

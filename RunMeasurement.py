@@ -20,6 +20,7 @@ plt.close('all')
     
 # Define location measurement suite
 abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
+abs_path = "S:\\masterproject\\images\\dodecane_17012025\\set2"
 
 # If the config files do not exist, create new ones.
 isLive = False
@@ -54,13 +55,13 @@ for directory in contents:
                                      view='side')
             r_max_side = cd.get_R()
             
-            # input_dir = os.path.join(abs_path, directory, 'top_view')
-            # cd = ComputeLensDynamics(input_dir, 
-            #                          XMIN=0, XMAX=None, 
-            #                          YMIN=0, YMAX=None, 
-            #                          framestart=('stack 1', frame_start_top), 
-            #                          view='top')
-            # r_max_top = cd.get_R()
+            input_dir = os.path.join(abs_path, directory, 'top_view')
+            cd = ComputeLensDynamics(input_dir, 
+                                      XMIN=0, XMAX=None, 
+                                      YMIN=0, YMAX=None, 
+                                      framestart=('stack 1', frame_start_top), 
+                                      view='top')
+            r_max_top = cd.get_R()
             
             break
             
@@ -71,55 +72,58 @@ def power_law(A, x, p):
 
 plt.close('all')
 
-maxima = r_max[0]
-lower_max = np.asarray(maxima[0])
-higher_max = np.asarray(maxima[1])
-lower_max_init = lower_max
-higher_max_init = higher_max
+x_ana = np.linspace(0, 1/fps, len(r_max_side))
+r_plot = np.zeros((len(r_max_side), 2))
+for ii, r in enumerate(r_max_side):
+    temp = []
+    for maxima in r:
+        temp.append([maxima[0], maxima[1]])
+    temp = np.mean(temp, axis=0)
+    r_plot[ii] = temp
 
-maxima = r_max[-1]
-lower_max = np.asarray(maxima[0])
-higher_max = np.asarray(maxima[1])
-higher_max_final  = np.asarray(maxima[0])
-lower_max_final = np.asarray(maxima[1])
-p1_max = []
-p2_max = []
+r_plot = np.linalg.norm(r_plot - r_plot[0], axis=1)        
 
 plt.figure()
-plt.imshow(image)
-for ii in range(len(r_max)):
-    maxima = r_max[ii]
-    lower_max = np.asarray(maxima[0])
-    higher_max = np.asarray(maxima[1])
+plt.loglog(x_ana, r_plot, '.-', color='blue', lw=2)
+plt.show()
 
-    p1_max.append(np.linalg.norm((higher_max - higher_max_init) * alpha)) # / higher_max_final))
-    p2_max.append(np.linalg.norm((lower_max - lower_max_init) * alpha)) # / higher_max_final))
-    
-    # p1_max.append(np.abs(lower_max[1] - lower_max_init[1]))
-    # p2_max.append(np.abs(higher_max[1] - higher_max_init[1]))
-    plt.xlim([0, 300])
-    plt.plot(higher_max[0], higher_max[1], '.', color='blue')
-    plt.plot(higher_max[0], lower_max[1], '.', color='red')
-    
-x_ana = np.arange(0, len(r_max)) / 100000 * 1e6
+for ii, r in enumerate(r_max_top):
+    if r == []:
+        length = ii
+        break
+
+x_ana = np.linspace(0, 1/fps, length)
+r_plot = np.zeros((length, 2))
+for ii in range(0, length):
+    r = r_max_top[ii]
+    temp = []
+    for maxima in r:
+        temp.append([maxima[0], maxima[1]])
+    temp = np.mean(temp, axis=0)
+    r_plot[ii] = temp
+
+r_plot = np.linalg.norm(r_plot - r_plot[0], axis=1)     
 
 plt.figure()
-plt.loglog(x_ana[1:], power_law(p1_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')
-plt.loglog(x_ana[1:], power_law(p1_max[1], x_ana[1:], 1), '--', color='black', label=r'$r \sim t$')
-plt.loglog(x_ana, p1_max, 'o', color='blue', label='data')
-plt.title('Neck radius as a function of time')
-plt.legend()
-plt.ylim([10**(0.5), 1e3])
-plt.xlim([1e1, 1e4])
-plt.xlabel(r'$t\, [\mu s]$')
-plt.ylabel(r'$h_0(t)\, [\mu m]$')
-plt.figure()
-plt.loglog(x_ana[1:], power_law(p2_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')
-plt.loglog(x_ana[1:], power_law(p2_max[1], x_ana[1:], 1), '--', color='black', label=r'$r \sim t$')
-plt.loglog(x_ana, p2_max, 'o', color='blue', label='data')
-plt.title('Neck radius as a function of time')
-plt.legend()
-plt.ylim([10**(0.5), 1e3])
-plt.xlim([1e1, 1e4])
-plt.xlabel(r'$t\, [\mu s]$')
-plt.ylabel(r'$h_0(t)\, [\mu m]$')
+plt.loglog(x_ana, r_plot, '.-', color='blue', lw=2)
+
+# plt.figure()
+# plt.loglog(x_ana[1:], power_law(p1_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')
+# plt.loglog(x_ana[1:], power_law(p1_max[1], x_ana[1:], 1), '--', color='black', label=r'$r \sim t$')
+# plt.loglog(x_ana, p1_max, 'o', color='blue', label='data')
+# plt.title('Neck radius as a function of time')
+# plt.legend()
+# plt.ylim([10**(0.5), 1e3])
+# plt.xlim([1e1, 1e4])
+# plt.xlabel(r'$t\, [\mu s]$')
+# plt.ylabel(r'$h_0(t)\, [\mu m]$')
+# plt.figure()
+# plt.loglog(x_ana[1:], power_law(p2_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')
+# plt.loglog(x_ana[1:], power_law(p2_max[1], x_ana[1:], 1), '--', color='black', label=r'$r \sim t$')
+# plt.loglog(x_ana, p2_max, 'o', color='blue', label='data')
+# plt.title('Neck radius as a function of time')
+# plt.legend()
+# plt.ylim([10**(0.5), 1e3])
+# plt.xlim([1e1, 1e4])
+# plt.xlabel(r'$t\, [\mu s]$')
+# plt.ylabel(r'$h_0(t)\, [\mu m]$')

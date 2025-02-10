@@ -215,5 +215,5 @@ def find_edge_extrema(image, contours):
         elif all(cb) and not all(ct):
             idx_ext = np.argmin(c[:, 0])
             cmin = getMax(c, idx_ext, ext='min')
-            c_max.append(cmin)
+            # c_max.append(cmin)
     return c_max

@@ -41,12 +41,9 @@ class ComputeLensDynamics:
         print('\nChecking window ...')
         self.check_window(XMIN, XMAX, YMIN, YMAX)
         
-        if (framestart == None):
-            print('\nFinding connecting frame ...')
-            self.find_connecting_frame()
-        else:
-            print(f'\nStarting stack and frame specified: {framestart[0]}, frame {framestart[1]}')
-            self.define_starting_frame(framestart)
+
+        print(f'\nStarting stack and frame specified: {framestart[0]}, frame {framestart[1]}')
+        self.define_starting_frame(framestart)
         
         print('all done!')
     
@@ -74,51 +71,6 @@ class ComputeLensDynamics:
             for stack in stack_to_pop:
                 self.stack_list.pop(stack)     
     
-    def find_connecting_frame(self):
-        '''
-        Function runs through all images in all stacks and finds where the 
-        droplets first connect, and adjusts the stack_list accordingly
-        '''
-        # Define list of stacks to pop
-        stack_to_pop = []
-        
-        # Iterate through stack
-        for stack in self.stack_list:
-            # Get stack info
-            stack_start = self.stack_list[stack][0][0]
-            stack_end = self.stack_list[stack][0][1]
-            stack_path = self.stack_list[stack][1]
-            print(f"stack {stack}/{len(self.stack_list)}")  
-            
-            # Iterator to go through stack
-            iterator = range(stack_start, stack_end)
-            
-            # Iterate through images
-            for ii in iterator:
-                image = hp.load_from_stack(stack_path, ii)[self.YMIN:self.YMAX+1, self.XMIN:self.XMAX+1]
-                # Find connecting frame
-                connected = self.dv.is_connected(image)
-                if connected:
-                    # Record frame, save to stack
-                    print(f'    found connection in {stack} frame {ii}!')
-                    stack_start = ii
-                    break
-            
-            # Make sure to break out of the entire loop
-            if connected:
-                break
-            else:
-                # Delete stack from dictionary if frame is not found
-                stack_to_pop.append(stack)
-        
-        # Update stack
-        self.stack_list.update({stack:[[stack_start, stack_end], stack_path]})
-        
-        # Delete the appended stacks
-        if stack_to_pop:
-            for stack in stack_to_pop:
-                self.stack_list.pop(stack)       
-    
     def get_R(self):
         '''
         Routine which is ran to get the side or top view height over time
@@ -127,6 +79,9 @@ class ComputeLensDynamics:
         print('\nComputing R ...')
         # ------------------------ Extract the edges --------------------------
         # Run through all the tiff stacks, works for just one stack too
+                    
+        # Define list to store maxima
+        r_max = []
         
         # Iterate through stack
         for stack in self.stack_list:
@@ -141,9 +96,6 @@ class ComputeLensDynamics:
             iterator = range(stack_start, stack_end)
             print(iterator)
             
-            # Define list to store maxima
-            r_max = []
-            
             # Splines list
             self.splines = []
             
@@ -157,13 +109,14 @@ class ComputeLensDynamics:
                 
                 try:
                     # Get the maximum from the coordinates (by fitting a spline)
-                    x_max, y_max = self.dv.find_edge_extrema(image, coords_subpix)
+                    c_max = self.dv.find_edge_extrema(image, coords_subpix)
                     
                     # Log r_max
-                    r_max.append((x_max, y_max))
+                    r_max.append(c_max)
                     
                 except Exception as exc: 
-                    print('\n' + str(exc))
+                    # Dump error message to standard output
+                    print('\nExcpetion: ' + str(exc))
                     break
                 
         return r_max
