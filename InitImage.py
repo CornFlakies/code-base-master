@@ -72,7 +72,6 @@ def create_config_from_suite(abs_path, fps):
             path_config_file, config_file = hp.load_files(path_dir, header="yaml")
             
             if (config_file != []):
-                output = []
                 with open(path_config_file[0], 'r', encoding='utf-8') as file:
                     data = yaml.safe_load(file)
                     print(yaml.dump(data, default_flow_style=False))
@@ -92,29 +91,37 @@ def create_config_from_suite(abs_path, fps):
                 top_image_paths, _ = hp.load_files(path_top_view, 'tif')
                 iv = ImageVisualizer(top_image_paths[0], view='top')
                 start_frame_top, manual_points_top = iv.get_data()
+                # Dump manual points into .npy file
+                if (np.sum(~np.isnan(manual_points_top[:, 0])) != 0):
+                    np.save(os.path.join(abs_path, directory, 'manual_points_top.npy'), manual_points_top)
+                
                 # Side view
                 path_side_view = os.path.join(abs_path, directory, 'side_view') 
                 side_image_paths, _ = hp.load_files(path_side_view, 'tif')
                 iv = ImageVisualizer(side_image_paths[0], view='side')
                 start_frame_side, manual_points_side = iv.get_data()
+                # Dump manual points into .npy file
+                if (np.sum(~np.isnan(manual_points_side[:, 0])) != 0):
+                    np.save(os.path.join(abs_path, directory, 'manual_points_side.npy'), manual_points_side)
                 
-                # Dump everything into a yaml file for future data analysis
-                config_data = {
-                    "MEASUREMENTS_PARAMETERS": {
-                        "FPS": float(fps),
-                        "CONV_TOP_VIEW": float(alpha_top),
-                        "CONV_SIDE_VIEW": float(alpha_side),
-                        },
-                    "INITIAL_PARAMETERS": {
-                        "DROP_RADIUS": float(R),
-                        "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
-                        "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
-                        }
-                    }
+                # # Dump everything into a yaml file for future data analysis
+                # config_data = {
+                #     "MEASUREMENTS_PARAMETERS": {
+                #         "DROP_RADIUS": float(R),
+                #         "FPS": float(fps),
+                #         "CONV_TOP_VIEW": float(alpha_top),
+                #         "CONV_SIDE_VIEW": float(alpha_side),
+                #         },
+                #     "INITIAL_PARAMETERS": {
+                #         "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
+                #         "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
+                #         }
+                #     }
                 
-                with open(os.path.join(abs_path, directory, 'config.yaml'), 'w', encoding="utf-8") as file:
-                    file.truncate()
-                    yaml.dump(config_data, file, default_flow_style=False)
+                
+                # with open(os.path.join(abs_path, directory, 'config.yaml'), 'w', encoding="utf-8") as file:
+                #     file.truncate()
+                #     yaml.dump(config_data, file, default_flow_style=False)
 
 def get_drop_radii(image):
     '''
@@ -274,12 +281,14 @@ def plot_drops(radii, centers, img, alpha_top, path='', show=True):
     radius_text = radius * alpha_top * 1e3
     ax.text(midpoint[0], midpoint[1], rf"r $\approx$ {radius_text:0.2f} $mm$", color=color, fontsize=10)
     
-    if show:
-        plt.show()
-        
     # Save figure
     path2 = os.path.join(path, 'init_circles.png')
     plt.savefig(path2)
+    
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
     
 def doConfigCreation():
     patterny = re.compile(r'\b(?:yes|y)\b', re.IGNORECASE)

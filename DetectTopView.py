@@ -210,10 +210,10 @@ def find_edge_extrema(image, contours):
         if all(ct) and not all(cb):
             idx_ext = np.argmax(c[:, 0])
             cmax = getMax(c, idx_ext, ext='max')
-            c_max.append(cmax)
+            # c_max.append(cmax)
         # If contour below midline
         elif all(cb) and not all(ct):
             idx_ext = np.argmin(c[:, 0])
             cmin = getMax(c, idx_ext, ext='min')
-            # c_max.append(cmin)
+            c_max.append(cmin)
     return c_max

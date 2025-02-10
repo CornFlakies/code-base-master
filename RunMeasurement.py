@@ -20,7 +20,7 @@ plt.close('all')
     
 # Define location measurement suite
 abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
-abs_path = "S:\\masterproject\\images\\dodecane_17012025\\set2"
+# abs_path = "S:\\masterproject\\images\\dodecane_17012025\\set2"
 
 # If the config files do not exist, create new ones.
 isLive = False
@@ -31,6 +31,11 @@ if isLive:
 # Load the files and directories from path
 contents = os.listdir(abs_path)
 
+# Create lists for the r data of each measurement
+R_all_side = []
+R_all_top = []
+all_radii = []
+
 # For each measurement, compute the initial radius of the droplets
 for directory in contents:
     if bool(re.search("meas", directory)):
@@ -40,20 +45,37 @@ for directory in contents:
             except yaml.YAMLError as exc:
                 print(exc)
             
-            R = data['INITIAL_PARAMETERS']['DROP_RADIUS']
+            # Pre-load data from the manually selected points
+            r_max_side = np.load(os.path.join(abs_path, directory, 'manual_points_side.npy'))
+            r_max_top = np.load(os.path.join(abs_path, directory, 'manual_points_top.npy'))
+            
+            
             frame_start_top = data['INITIAL_PARAMETERS']['INITIAL_FRAME_TOP_VIEW']
             frame_start_side = data['INITIAL_PARAMETERS']['INITIAL_FRAME_SIDE_VIEW']
+            R = data['INITIAL_PARAMETERS']['DROP_RADIUS']
             alpha_top = data['MEASUREMENTS_PARAMETERS']['CONV_TOP_VIEW']
             alpha_side = data['MEASUREMENTS_PARAMETERS']['CONV_SIDE_VIEW']
             fps = data['MEASUREMENTS_PARAMETERS']['FPS']
             
+            # Get drop radius
+            all_radii.append(R)
+            
             input_dir = os.path.join(abs_path, directory, 'side_view')
             cd = ComputeLensDynamics(input_dir, 
-                                     XMIN=0, XMAX=None, 
-                                     YMIN=0, YMAX=None, 
-                                     framestart=('stack 1', frame_start_side), 
-                                     view='side')
-            r_max_side = cd.get_R()
+                                      XMIN=0, XMAX=None, 
+                                      YMIN=0, YMAX=None, 
+                                      framestart=('stack 1', frame_start_side), 
+                                      view='side')
+            data_side = cd.get_R()
+            
+            # add the manually selected data to the computed data, then append
+            # to a list containing the R data for each measurement
+            for ii, r in enumerate(data_side):
+                if (r != []):
+                    r_max_side[frame_start_side + ii, :] = [r[0][0], r[0][1]]
+            r_max_side = r_max_side[~np.isnan(r_max_side).any(axis=1)]
+            R_all_side.append(r_max_side)
+        
             
             input_dir = os.path.join(abs_path, directory, 'top_view')
             cd = ComputeLensDynamics(input_dir, 
@@ -61,51 +83,44 @@ for directory in contents:
                                       YMIN=0, YMAX=None, 
                                       framestart=('stack 1', frame_start_top), 
                                       view='top')
-            r_max_top = cd.get_R()
+            data_top = cd.get_R()
             
-            break
-            
-            
+            for ii, r in enumerate(data_top):
+                if (r != []):
+                    r_max_top[frame_start_top + ii, :] = [r[0][0], r[0][1]]
+            r_max_top = r_max_top[~np.isnan(r_max_top).any(axis=1)] 
+            R_all_top.append(r_max_top)
+
+    
 #%% Plot powerlaw
-def power_law(A, x, p):
-    return A * (x/x[0])**(p)
+def power_law(height, x_start, x_end, p):
+    x = np.linspace(x_start, x_end, 2)
+    return x, height * (x/x[0])**(p)
 
 plt.close('all')
 
-x_ana = np.linspace(0, 1/fps, len(r_max_side))
-r_plot = np.zeros((len(r_max_side), 2))
-for ii, r in enumerate(r_max_side):
-    temp = []
-    for maxima in r:
-        temp.append([maxima[0], maxima[1]])
-    temp = np.mean(temp, axis=0)
-    r_plot[ii] = temp
+fig1, ax1 = plt.subplots()
+fig2, ax2 = plt.subplots()
 
-r_plot = np.linalg.norm(r_plot - r_plot[0], axis=1)        
+for r_max_top, r_max_side, R in zip(R_all_top, R_all_side, all_radii):
 
-plt.figure()
-plt.loglog(x_ana, r_plot, '.-', color='blue', lw=2)
+    x_ana = np.linspace(0, 1/fps, len(r_max_top))
+    r_plot = np.linalg.norm(r_max_top - r_max_top[0], axis=1)        
+    
+
+    ax1.loglog(x_ana, r_plot * alpha_top, '.-', color='blue', lw=2)
+    ax1.loglog(*power_law(1e-4, 1e-6, 1e-5, 1/2), '--', color='red', lw=1)
+    
+    x_ana = np.linspace(0, 1/fps, len(r_max_side))
+    r_plot = np.linalg.norm(r_max_side - r_max_side[0], axis=1)   
+
+    ax1.loglog(x_ana, r_plot * alpha_side, '.-', color='blue', lw=2)
+    ax1.loglog(*power_law(1e-4, 1e-6, 1e-5, 1), '--', color='red', lw=1)  
+    
+
 plt.show()
-
-for ii, r in enumerate(r_max_top):
-    if r == []:
-        length = ii
-        break
-
-x_ana = np.linspace(0, 1/fps, length)
-r_plot = np.zeros((length, 2))
-for ii in range(0, length):
-    r = r_max_top[ii]
-    temp = []
-    for maxima in r:
-        temp.append([maxima[0], maxima[1]])
-    temp = np.mean(temp, axis=0)
-    r_plot[ii] = temp
-
-r_plot = np.linalg.norm(r_plot - r_plot[0], axis=1)     
-
-plt.figure()
-plt.loglog(x_ana, r_plot, '.-', color='blue', lw=2)
+# plt.axhline(xmin=int(R), linestyle='--', color='red')
+# plt.axvline(frame_start_side / fps, '--', color='red')
 
 # plt.figure()
 # plt.loglog(x_ana[1:], power_law(p1_max[7], x_ana[1:], 1/2), '--', color='grey', label=r'$r \sim t^{1/2}$')

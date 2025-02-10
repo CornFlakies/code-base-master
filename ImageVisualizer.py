@@ -36,7 +36,7 @@ class ImageVisualizer:
         elif (view == 'top'):
             self.dv = dtv
         else:
-            raise Exception('Invalid view argument')
+            raise Exception(f'Check class initialization, invalid view argument: {view}')
             
         # Define general variables, buttons, plot and create image
         self.start_frame = 0
@@ -60,8 +60,7 @@ class ImageVisualizer:
         self.update_image()
     
         # Define button size
-        bottom_button_size = [0.1, 0.1, 0.075]    
-        right_button_size = [0.5, 0.1, 0.075]
+        bottom_button_size = [0.1, 0.1, 0.075]
     
         # Define button axes
         axprev10 = self.fig.add_axes([0.25, *bottom_button_size])
