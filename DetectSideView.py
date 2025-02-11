@@ -98,33 +98,6 @@ def detect_edges(image):
 
     return [coords_subpix]
 
-def is_connected(image):
-    '''
-    Find the first frame where the droplets connect, such that a starting frame
-    can be defined, from which to base the initial bridge height off.
-    '''
-    # Get Canny edges
-    edges = canny_edges(image)
-    
-    # Flatten edge array
-    edge_flat = np.mean(edges, axis=0)
-    edge_flat = np.where(edge_flat > 0, 1, 0)
-    
-    # Ignore leading and trailing zeros by slicing the array up to the last 1
-    first_one_index = np.min(np.where(edge_flat == 1)[0]) if 1 in edge_flat else -1
-    last_one_index = np.max(np.where(edge_flat == 1)[0]) if 1 in edge_flat else -1
-    edge_flat = edge_flat[first_one_index:last_one_index + 1] if first_one_index != -1 else edge_flat
-    
-    # Find the amount of broken sequences in the flattened array
-    start_of_breaks = (edge_flat[:-1] == 1) & (edge_flat[1:] == 0)
-    num_breaks = np.sum(start_of_breaks)
-    
-    if (num_breaks == 0):
-        return True
-    else:
-        return False
-    
-
 def find_edge_extrema(image, coords_edges):
     '''
     Finds the maximum location based on the subpixel detected edge, a polynomial

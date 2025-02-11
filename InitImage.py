@@ -19,9 +19,6 @@ from CalibrateImages import CalibrateImages
 
 
 def create_config_from_suite(abs_path, fps):
-    # Define FPS of the measurements
-    fps = 1e5
-    
     # Load the files and directories from path
     contents = os.listdir(abs_path)
     

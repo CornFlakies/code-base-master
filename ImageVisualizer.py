@@ -15,10 +15,6 @@ matplotlib.use('Qt5Agg')  # Ensure interactive backend is selected
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 
-# # Define location measurement suite
-# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas2\\dodecane_top_view.tif"
-# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas2\\dodecane_side_view.tif"
-
 # # Size of the 1st stack
 # stack_length = hp.get_stack_size(file_path)
 
@@ -151,7 +147,7 @@ class ImageVisualizer:
         print('Reset selected points ...')
         
     def on_click(self, event):
-        if event.button == 3: # 3 is right-click button
+        if event.button == 3: # 3 is the right-click button
             ix, iy = event.xdata, event.ydata
             print(f'Selected point: [{ix}, {iy}]')
             self.manual_points[self.frame] = [ix, iy]
@@ -201,6 +197,10 @@ class ImageVisualizer:
     def get_data(self):
         return self.start_frame, self.manual_points
     
-# plt.close('all')
-# iv = ImageVisualizer(file_path, view='side')
-# data = iv.getData()
+# # Define location measurement suite
+file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas2\\top_view\\dodecane_top_view.tif"
+# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\side_view\\dodecane_side_view.tif"    
+
+plt.close('all')
+iv = ImageVisualizer(file_path, view='side')
+data = iv.getData()

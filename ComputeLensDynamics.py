@@ -40,7 +40,6 @@ class ComputeLensDynamics:
         
         print('\nChecking window ...')
         self.check_window(XMIN, XMAX, YMIN, YMAX)
-        
 
         print(f'\nStarting stack and frame specified: {framestart[0]}, frame {framestart[1]}')
         self.define_starting_frame(framestart)
@@ -116,7 +115,7 @@ class ComputeLensDynamics:
                     
                 except Exception as exc: 
                     # Dump error message to standard output
-                    print('\nExcpetion: ' + str(exc))
+                    print('\nException: ' + str(exc))
                     break
                 
         return r_max

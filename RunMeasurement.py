@@ -34,6 +34,8 @@ contents = os.listdir(abs_path)
 # Create lists for the r data of each measurement
 R_all_side = []
 R_all_top = []
+all_frames_side = []
+all_frames_top = []
 all_radii = []
 
 # For each measurement, compute the initial radius of the droplets
@@ -49,7 +51,6 @@ for directory in contents:
             r_max_side = np.load(os.path.join(abs_path, directory, 'manual_points_side.npy'))
             r_max_top = np.load(os.path.join(abs_path, directory, 'manual_points_top.npy'))
             
-            
             frame_start_top = data['INITIAL_PARAMETERS']['INITIAL_FRAME_TOP_VIEW']
             frame_start_side = data['INITIAL_PARAMETERS']['INITIAL_FRAME_SIDE_VIEW']
             R = data['INITIAL_PARAMETERS']['DROP_RADIUS']
@@ -57,7 +58,7 @@ for directory in contents:
             alpha_side = data['MEASUREMENTS_PARAMETERS']['CONV_SIDE_VIEW']
             fps = data['MEASUREMENTS_PARAMETERS']['FPS']
             
-            # Get drop radius
+            # Get drop radii
             all_radii.append(R)
             
             input_dir = os.path.join(abs_path, directory, 'side_view')
@@ -69,10 +70,12 @@ for directory in contents:
             data_side = cd.get_R()
             
             # add the manually selected data to the computed data, then append
-            # to a list containing the R data for each measurement
-            for ii, r in enumerate(data_side):
+            # to a list containing all the individual measurement data
+            for ii, r in enumerate(data_side): # Side view
                 if (r != []):
                     r_max_side[frame_start_side + ii, :] = [r[0][0], r[0][1]]
+            frames_side = np.where(~np.isnan(r_max_side[:, 0]))[0]
+            all_frames_side.append(frames_side)
             r_max_side = r_max_side[~np.isnan(r_max_side).any(axis=1)]
             R_all_side.append(r_max_side)
         
@@ -85,9 +88,13 @@ for directory in contents:
                                       view='top')
             data_top = cd.get_R()
             
-            for ii, r in enumerate(data_top):
+            for ii, r in enumerate(data_top): # Top view
                 if (r != []):
                     r_max_top[frame_start_top + ii, :] = [r[0][0], r[0][1]]
+                    
+            # Get indices of all non nan elements
+            frames_top = np.where(~np.isnan(r_max_top[:, 0]))[0]
+            all_frames_top.append(frames_top)
             r_max_top = r_max_top[~np.isnan(r_max_top).any(axis=1)] 
             R_all_top.append(r_max_top)
 
@@ -102,20 +109,30 @@ plt.close('all')
 fig1, ax1 = plt.subplots()
 fig2, ax2 = plt.subplots()
 
-for r_max_top, r_max_side, R in zip(R_all_top, R_all_side, all_radii):
+unit = 1e6
 
-    x_ana = np.linspace(0, 1/fps, len(r_max_top))
+for r_max_top, frames_top, r_max_side, frames_side, R in zip(R_all_top, all_frames_top, R_all_side, all_frames_side, all_radii):
+
+    x_top = (frames_top - frames_top[0]) / fps
     r_plot = np.linalg.norm(r_max_top - r_max_top[0], axis=1)        
     
-
-    ax1.loglog(x_ana, r_plot * alpha_top, '.-', color='blue', lw=2)
-    ax1.loglog(*power_law(1e-4, 1e-6, 1e-5, 1/2), '--', color='red', lw=1)
+    ax1.loglog(x_top[1:] * 1e3, r_plot[1:] * alpha_top * unit, '.', color='blue', lw=2)
+    ax1.loglog(*power_law(10**(2.2), 10**(-0.5), 10**(0), 1/2), '--', color='red', lw=1)
+    # ax1.set_xlim([1e-5, 1e-3])
+    ax1.set_ylim([10**(1.7), 10**(2.8)])
+    ax1.set_xlabel(f'$t - t_0 [ms]$')
+    ax1.set_ylabel(f'$R_0 [\mu m]$')
+    ax1.grid()
     
-    x_ana = np.linspace(0, 1/fps, len(r_max_side))
+    x_side = (frames_side - frames_side[0]) / fps
     r_plot = np.linalg.norm(r_max_side - r_max_side[0], axis=1)   
 
-    ax1.loglog(x_ana, r_plot * alpha_side, '.-', color='blue', lw=2)
-    ax1.loglog(*power_law(1e-4, 1e-6, 1e-5, 1), '--', color='red', lw=1)  
+    ax2.loglog(x_side[1:] * 1e3, r_plot[1:] * alpha_side * unit, '.', color='blue', lw=2)
+    ax2.loglog(*power_law(10**(1), 10**(-1), 10**(0), 2/3), '--', color='red', lw=1)  
+    ax2.set_xlabel(f'$t - t_0 [ms]$')
+    ax2.set_ylabel(f'$y_0 [\mu m]$')
+    ax2.grid()
+    
     
 
 plt.show()
