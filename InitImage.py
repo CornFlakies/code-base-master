@@ -61,7 +61,7 @@ def create_config_from_suite(abs_path, fps):
             
             # Convert Radius
             R = np.mean(radii)
-            R *=  alpha_top
+            R *= alpha_top
             
             # User select starting frame from the batch of measurements
             # Do a check if config file alread exists
@@ -101,24 +101,24 @@ def create_config_from_suite(abs_path, fps):
                 if (np.sum(~np.isnan(manual_points_side[:, 0])) != 0):
                     np.save(os.path.join(abs_path, directory, 'manual_points_side.npy'), manual_points_side)
                 
-                # # Dump everything into a yaml file for future data analysis
-                # config_data = {
-                #     "MEASUREMENTS_PARAMETERS": {
-                #         "DROP_RADIUS": float(R),
-                #         "FPS": float(fps),
-                #         "CONV_TOP_VIEW": float(alpha_top),
-                #         "CONV_SIDE_VIEW": float(alpha_side),
-                #         },
-                #     "INITIAL_PARAMETERS": {
-                #         "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
-                #         "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
-                #         }
-                #     }
+                # Dump everything into a yaml file for future data analysis
+                config_data = {
+                    "MEASUREMENTS_PARAMETERS": {
+                        "DROP_RADIUS": float(R),
+                        "FPS": float(fps),
+                        "CONV_TOP_VIEW": float(alpha_top),
+                        "CONV_SIDE_VIEW": float(alpha_side),
+                        },
+                    "INITIAL_PARAMETERS": {
+                        "INITIAL_FRAME_TOP_VIEW": int(start_frame_top),
+                        "INITIAL_FRAME_SIDE_VIEW": int(start_frame_side)
+                        }
+                    }
                 
                 
-                # with open(os.path.join(abs_path, directory, 'config.yaml'), 'w', encoding="utf-8") as file:
-                #     file.truncate()
-                #     yaml.dump(config_data, file, default_flow_style=False)
+                with open(os.path.join(abs_path, directory, 'config.yaml'), 'w', encoding="utf-8") as file:
+                    file.truncate()
+                    yaml.dump(config_data, file, default_flow_style=False)
 
 def get_drop_radii(image):
     '''

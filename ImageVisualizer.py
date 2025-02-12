@@ -202,5 +202,4 @@ file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas2\\top_view
 # file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\side_view\\dodecane_side_view.tif"    
 
 plt.close('all')
-iv = ImageVisualizer(file_path, view='side')
-data = iv.getData()
+iv = ImageVisualizer(file_path, view='top')
