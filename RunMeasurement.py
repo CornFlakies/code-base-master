@@ -18,6 +18,18 @@ import matplotlib.pyplot as plt
 from ComputeLensDynamics import ComputeLensDynamics
 
 plt.close('all')
+
+
+# Load data from Hack and Burton
+path_burton = "D:\\masterproject\\scrubbed_data\\burton\\top_view_points.csv"
+data_burton = pd.read_csv(path_burton).to_numpy()
+
+path_hack = "D:\\masterproject\\scrubbed_data\\hack\\figure1\\1p36mPa.txt"
+data_hack = []
+with open(path_hack) as file:    
+    for line in file:
+        data_hack.append([float(x) for x in line.split()])
+data_hack = np.asarray(data_hack, dtype=float)
     
 # Define location measurement suite
 abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
@@ -131,8 +143,8 @@ df = pd.DataFrame(df_data)
 file = os.path.join(abs_path, 'data.pkl')
 df.to_pickle(file)
 
-#%% Plot powerlaw
-
+#%% Plot data
+size = 25
 
 def find_matching_indices(arr1, arr2):
     i, j = 0, 0  # Two pointers
@@ -154,16 +166,27 @@ def power_law(height, x_start, x_end, p):
     x = np.linspace(x_start, x_end, 2)
     return x, height * (x/x[0])**(p)
 
+def custom_legend(ax, loc=None):
+    ax.legend(
+        markerscale=2,
+        frameon=False,
+        fontsize=size, 
+        loc=loc)
+
+# Set mpl font, and fontsizes for both math- and text-mode
 import matplotlib 
- 
-matplotlib.rc('xtick', labelsize=15) 
-matplotlib.rc('ytick', labelsize=15) 
+from cycler import cycler
 
-font = {'family' : 'sans-serif',
-        'weight' : 'normal',
-        'size'   : 15}
+# Select colors for the standard color cycle
+hex_colors_np = np.array(['#a1132f', '#46b3d1', '#77ac31', '#7e2f8c', '#ebb120', '#d95317', '#1a71ad'])
 
-matplotlib.rc('font', **font)
+# Set as the default color cycle
+matplotlib.rcParams["axes.prop_cycle"] = cycler(color=hex_colors_np)
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
+matplotlib.rc('xtick', labelsize=size) 
+matplotlib.rc('ytick', labelsize=size)
+matplotlib.rc('axes', labelsize=size)
 
 # Open DF
 file = os.path.join(abs_path, 'data.pkl')
@@ -171,11 +194,11 @@ df = pd.read_pickle(file)
 
 plt.close('all')
 
-fig1, ax1 = plt.subplots(figsize=(8, 6))
-fig2, ax2 = plt.subplots(figsize=(8, 6))
-fig3, ax3 = plt.subplots(figsize=(8, 6))
-fig4, ax4 = plt.subplots(figsize=(8, 6))
-fig5, ax5 = plt.subplots(figsize=(8, 6))
+fig1, ax1 = plt.subplots(figsize=(6, 6))
+fig2, ax2 = plt.subplots(figsize=(6, 6))
+fig3, ax3 = plt.subplots(figsize=(6, 6))
+fig4, ax4 = plt.subplots(figsize=(6, 6))
+fig5, ax5 = plt.subplots(figsize=(6, 6))
 
 unit = 1e6
 
@@ -202,24 +225,24 @@ for ii in df.index:
     # plt.plot(r_max_top[:, 0] / alpha_top, r_max_top[:, 1] / alpha_top, '.-', color='green')
     
     # Plot of the top view heights of each individual measurement
-    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', color='blue', lw=2)
+    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', lw=2)#, label=f'R = {R * 1e3:.2f} mm')
     # ax1.set_xlim([1e-5, 1e-3])
 
-    x_side = (frames_side - frames_side[0]) / fps
+    x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
 
     # Plot of side view heights of each individual measurement
-    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', color='blue', lw=2)
+    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', lw=2)#, label=f'R = {R * 1e3:.2f} mm')
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
-    ax3.loglog(x_top[1:] / t_i, r_plot_top[1:] / R, '.', color='blue', lw=2)
+    ax3.loglog(x_top[1:], r_plot_top[1:] / R, '.', color='blue', lw=2)
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
-    ax4.loglog(x_side[1:] / t_i, r_plot_side[1:] / l_v, '.', color='blue', lw=2)
+    ax4.loglog(x_side[1:], r_plot_side[1:] / l_v, '.', color='blue', lw=2)
     
-    # Get h_0 / y_0
+    # Compute h_0 / y_0
     indices = find_matching_indices(frames_top, frames_side)
     f = []
     theta = []
@@ -231,40 +254,39 @@ for ii in df.index:
         f.append(f_0)
         
     t = (f - frames_top[0]) / fps   
-    ax5.plot(t * 1e3, theta, '.', label=f'{ii}')
-    # ax5.loglog(*power_law(1.25e-1, 1e-1, 1e0, 1/6), '--', color='black')
+    ax5.loglog(t * 1e3, theta, '.', label=f'{ii}')
+    ax5.loglog(*power_law(1.25e-1, 1e-1, 1e0, 1/6), '--', color='black')
     ax5.set_ylabel("$y_0 / h_0$")
     ax5.set_xlabel("$t [ms]$")
     ax5.set_ylim([0.1, 0.3])
     # ax5.legend()
 
-ax1.loglog(*power_law(10**(2), 10**(2.2), 10**(2.7), 1/2), '--', color='red', lw=2, label='$y_0\sim t^{1/2}$')
-ax1.legend()
-ax2.loglog(*power_law(10**(1.50), 10**(2.5), 10**(3), 2/3), '--', color='red', lw=2, label='$h_0\sim t^{2/3}$')  
-ax2.legend()
-
-ax1.set_title("Top view, $y_0$ as a function of time")
+ax1.loglog(*power_law(10**(2), 10**(2.2), 10**(2.7), 1/2), '--', color='black', lw=2, label='$y_0\sim t^{1/2}$')
+custom_legend(ax1, loc='upper left')
+# ax1.set_title("Top view, $y_0$ as a function of time")
 ax1.set_ylim([10**(1.7), 10**(2.8)])
-ax1.set_xlabel('$t - t_0 [\mu s]$')
+ax1.set_xlabel('$t - t_0\, [\mu s]$')
 ax1.set_ylabel('$y_0 [\mu m]$')
 
-ax2.set_title("Side view, $h_0$ as a function of time")
-ax2.set_xlabel('$t - t_0 [\mu s]$')
+ax2.loglog(*power_law(10**(1.50), 10**(2.5), 10**(3), 2/3), '--', color='black', lw=2, label='$h_0\sim t^{2/3}$')  
+custom_legend(ax2, loc='upper left')
+# ax2.set_title("Side view, $h_0$ as a function of time")
 ax2.set_ylabel('$h_0 [\mu m]$')
+ax2.set_xlabel('$t - t_0\, [\mu s]$')
 
-ax3.set_title("top view, divided by the drop radius")
-ax3.set_xlabel('$(t - t_0) / t_i$')
+# ax3.set_title("top view, divided by the drop radius")
+ax3.set_xlabel('$t - t_0$')
 ax3.set_ylabel('$y_0\, /\, R$')
 
-ax4.set_title("side view, divided by the intrinsic length scale of dodecane")
-ax4.set_xlabel('$(t - t_0) / t_i$')
+# ax4.set_title("side view, divided by the intrinsic length scale of dodecane")
+ax4.set_xlabel('$(t - t_0)$')
 ax4.set_ylabel('$h_0\, /\, l_v$')
 
-ax1.grid()
-ax2.grid()
-ax3.grid()
-ax4.grid()
-ax5.grid()
+# ax1.grid()
+# ax2.grid()
+# ax3.grid()
+# ax4.grid()
+# ax5.grid()
 
 fig1.tight_layout()
 fig2.tight_layout()
