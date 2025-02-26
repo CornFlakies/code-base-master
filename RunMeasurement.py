@@ -28,7 +28,7 @@ path_hack = "D:\\masterproject\\scrubbed_data\\hack\\figure1\\1p36mPa.txt"
 data_hack = []
 with open(path_hack) as file:    
     for line in file:
-        data_hack.append([float(x) for x in line.split()])
+        data_hack.append([float(x)  for x in line.split()])
 data_hack = np.asarray(data_hack, dtype=float)
     
 # Define location measurement suite
@@ -38,7 +38,7 @@ abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 eta = 1.36e-3 # Pa s
 gamma =  25e-3 # N / m
 rho = 750 # kg / m^3
-l_v = eta**2 / (gamma * rho)
+# l_v = eta**2 / (gamma * rho)
 
 #%% 
 
@@ -143,6 +143,13 @@ df = pd.DataFrame(df_data)
 file = os.path.join(abs_path, 'data.pkl')
 df.to_pickle(file)
 
+#%% Remove datapoints that are bad
+r_max_side = df.loc[3, 'Y_max_side']
+frames_side = df.loc[3, 'frames_side']
+
+# Indices 11 and 18
+
+
 #%% Plot data
 size = 25
 
@@ -166,12 +173,37 @@ def power_law(height, x_start, x_end, p):
     x = np.linspace(x_start, x_end, 2)
     return x, height * (x/x[0])**(p)
 
-def custom_legend(ax, loc=None):
+def logtriangle(x_loc, y_loc, baselength, slope, flipped=False):
+    x1, y1 = x_loc, y_loc
+    x2 = x_loc + baselength
+    
+    if not flipped:
+        y2 = y1 * (x2 / x1) ** slope
+        vertices = [
+            [x1, y1],
+            [x2, y1],
+            [x2, y2],
+            [x1, y1],
+            ]
+    if flipped:
+        y2 = y1 * (x1 / x2) ** slope
+        vertices = [
+            [x1, y2],
+            [x1, y1],
+            [x2, y1],
+            [x1, y2],
+            ]
+    
+   
+    return vertices
+
+def custom_legend(ax, markerscale=2, frameon=False, fontsize=25, loc=None):
     ax.legend(
-        markerscale=2,
-        frameon=False,
-        fontsize=size, 
+        markerscale=markerscale,
+        frameon=frameon,
+        fontsize=fontsize, 
         loc=loc)
+    
 
 # Set mpl font, and fontsizes for both math- and text-mode
 import matplotlib 
@@ -194,16 +226,16 @@ df = pd.read_pickle(file)
 
 plt.close('all')
 
-fig1, ax1 = plt.subplots(figsize=(6, 6))
-fig2, ax2 = plt.subplots(figsize=(6, 6))
-fig3, ax3 = plt.subplots(figsize=(6, 6))
-fig4, ax4 = plt.subplots(figsize=(6, 6))
-fig5, ax5 = plt.subplots(figsize=(6, 6))
+fig1, ax1 = plt.subplots(figsize=(7, 6))
+fig2, ax2 = plt.subplots(figsize=(7, 6))
+fig3, ax3 = plt.subplots(figsize=(7, 6))
+fig4, ax4 = plt.subplots(figsize=(7, 6))
+fig5, ax5 = plt.subplots(figsize=(7, 6))
 
 unit = 1e6
 
 for ii in df.index:
-    
+
     # Load all the data from the dataframe
     r_max_top = df.loc[ii, 'R_max_top']
     frames_top = df.loc[ii, 'frames_top']
@@ -214,33 +246,38 @@ for ii in df.index:
     alpha_top = df.loc[ii, 'alpha_top']
     alpha_side = df.loc[ii, 'alpha_side']
 
+    if (ii == 3):
+        r_max_side = np.delete(r_max_side, [11, 18], axis=0)
+        frames_side = np.delete(frames_side, [11, 18], axis=0)
+        
+
     # Define x-values
     x_top = (frames_top - frames_top[0]) / fps
     r_plot_top = np.linalg.norm(r_max_top - r_max_top[0], axis=1)    
     
     # Define inertial time scale
-    t_i = np.sqrt((rho * R**3)/gamma)
+    t_i = np.sqrt((rho * R**3) / gamma)
     
     # plt.figure()
     # plt.plot(r_max_top[:, 0] / alpha_top, r_max_top[:, 1] / alpha_top, '.-', color='green')
     
     # Plot of the top view heights of each individual measurement
-    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', lw=2)#, label=f'R = {R * 1e3:.2f} mm')
+    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     # ax1.set_xlim([1e-5, 1e-3])
 
     x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
 
     # Plot of side view heights of each individual measurement
-    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', lw=2)#, label=f'R = {R * 1e3:.2f} mm')
+    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
-    ax3.loglog(x_top[1:], r_plot_top[1:] / R, '.', color='blue', lw=2)
+    ax3.loglog(x_top[1:] / t_i, r_plot_top[1:] / R, '.', lw=2)
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
-    ax4.loglog(x_side[1:], r_plot_side[1:] / l_v, '.', color='blue', lw=2)
+    ax4.loglog(x_side[1:] / t_i, r_plot_side[1:] * (rho / gamma)**1/3, '.', lw=2)
     
     # Compute h_0 / y_0
     indices = find_matching_indices(frames_top, frames_side)
@@ -261,25 +298,60 @@ for ii in df.index:
     ax5.set_ylim([0.1, 0.3])
     # ax5.legend()
 
-ax1.loglog(*power_law(10**(2), 10**(2.2), 10**(2.7), 1/2), '--', color='black', lw=2, label='$y_0\sim t^{1/2}$')
-custom_legend(ax1, loc='upper left')
+
+vertices = logtriangle(500, 200, 700, 1/2)
+
+xlabel_loc = [10**((np.log10(vertices[0][0]) + np.log10(vertices[1][0])) / 2),
+              10**((np.log10(vertices[0][1]) + np.log10(vertices[1][1])) / 2)]
+ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
+              10**((np.log10(vertices[1][1]) + np.log10(vertices[2][1])) / 2)]
+
+# Unzip the vertices into x and y coordinates
+x, y = zip(*vertices)
+
+# Plot triangle and add side labels
+ax1.plot(x, y, color='black')
+ax1.annotate('2', xlabel_loc, textcoords="offset points", xytext=(0, -20), fontsize=25, ha='center')
+ax1.annotate('1', ylabel_loc, textcoords="offset points", xytext=(20, 0), fontsize=25, ha='right')
+ax1.loglog(data_burton[:, 0], data_burton[:, 1], '^', color='black', label='Burton &\nTaborek. 2007')
+custom_legend(ax1, fontsize=18, loc='upper left')
 # ax1.set_title("Top view, $y_0$ as a function of time")
 ax1.set_ylim([10**(1.7), 10**(2.8)])
 ax1.set_xlabel('$t - t_0\, [\mu s]$')
 ax1.set_ylabel('$y_0 [\mu m]$')
+ax1.xaxis.set_ticks_position('both')
+ax1.yaxis.set_ticks_position('both')
 
-ax2.loglog(*power_law(10**(1.50), 10**(2.5), 10**(3), 2/3), '--', color='black', lw=2, label='$h_0\sim t^{2/3}$')  
-custom_legend(ax2, loc='upper left')
-# ax2.set_title("Side view, $h_0$ as a function of time")
+
+vertices = logtriangle(210, 20, 1000, 2/3, flipped=False)
+
+xlabel_loc = [10**((np.log10(vertices[0][0]) + np.log10(vertices[1][0])) / 2),
+              10**((np.log10(vertices[0][1]) + np.log10(vertices[1][1])) / 2)]
+ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
+              10**((np.log10(vertices[1][1]) + np.log10(vertices[2][1])) / 2)]
+
+# Unzip the vertices into x and y coordinates
+x, y = zip(*vertices)
+
+# Plot triangle and add side labels
+ax2.plot(x, y, color='black')
+ax2.annotate('3', xlabel_loc, textcoords="offset points", xytext=(0, -20), fontsize=25, ha='center')
+ax2.annotate('2', ylabel_loc, textcoords="offset points", xytext=(20, 0), fontsize=25, ha='right')
+ax2.loglog(data_hack[:, 0] * 1e6, data_hack[:, 1] * 1e6, '>', color='black', label='Hack et al. 2020')
+ax2.set_xlim([1e1, 1.5e4])
+custom_legend(ax2, fontsize=20, loc='upper left')
 ax2.set_ylabel('$h_0 [\mu m]$')
 ax2.set_xlabel('$t - t_0\, [\mu s]$')
+# ax2.set_title("Side view, $h_0$ as a function of time")
+ax2.xaxis.set_ticks_position('both')
+ax2.yaxis.set_ticks_position('both')
 
 # ax3.set_title("top view, divided by the drop radius")
-ax3.set_xlabel('$t - t_0$')
+ax3.set_xlabel(r'$(t - t_0) / \tau_i$')
 ax3.set_ylabel('$y_0\, /\, R$')
 
 # ax4.set_title("side view, divided by the intrinsic length scale of dodecane")
-ax4.set_xlabel('$(t - t_0)$')
+ax4.set_xlabel(r'$(t - t_0) / \tau_i$')
 ax4.set_ylabel('$h_0\, /\, l_v$')
 
 # ax1.grid()
