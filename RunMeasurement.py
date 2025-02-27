@@ -15,6 +15,8 @@ from tqdm import tqdm
 import InitImage as iim
 import HelperFunctions as hp
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from scipy.optimize import curve_fit
 from ComputeLensDynamics import ComputeLensDynamics
 
 plt.close('all')
@@ -22,7 +24,7 @@ plt.close('all')
 
 # Load data from Hack and Burton
 path_burton = "D:\\masterproject\\scrubbed_data\\burton\\top_view_points.csv"
-data_burton = pd.read_csv(path_burton).to_numpy()
+data_burton = pd.read_csv(path_burton).to_numpy() # in micrometer and microsecs
 
 path_hack = "D:\\masterproject\\scrubbed_data\\hack\\figure1\\1p36mPa.txt"
 data_hack = []
@@ -75,6 +77,7 @@ for directory in contents:
             r_max_side = np.load(os.path.join(abs_path, directory, 'manual_points_side.npy'))
             r_max_top = np.load(os.path.join(abs_path, directory, 'manual_points_top.npy'))
             
+            # Load the rest of the measurement data
             frame_start_top = data['INITIAL_PARAMETERS']['INITIAL_FRAME_TOP_VIEW']
             frame_start_side = data['INITIAL_PARAMETERS']['INITIAL_FRAME_SIDE_VIEW']
             R = data['INITIAL_PARAMETERS']['DROP_RADIUS']
@@ -143,17 +146,14 @@ df = pd.DataFrame(df_data)
 file = os.path.join(abs_path, 'data.pkl')
 df.to_pickle(file)
 
-#%% Remove datapoints that are bad
-r_max_side = df.loc[3, 'Y_max_side']
-frames_side = df.loc[3, 'frames_side']
-
-# Indices 11 and 18
-
 
 #%% Plot data
 size = 25
 
 def find_matching_indices(arr1, arr2):
+    '''
+    Scanes two 1D arrays and returns the indices where values are equal
+    '''
     i, j = 0, 0  # Two pointers
     matching_indices = []
 
@@ -170,10 +170,19 @@ def find_matching_indices(arr1, arr2):
     return matching_indices
 
 def power_law(height, x_start, x_end, p):
+    '''
+    Returns the x- and y-values of a power law p.
+    '''
     x = np.linspace(x_start, x_end, 2)
     return x, height * (x/x[0])**(p)
 
 def logtriangle(x_loc, y_loc, baselength, slope, flipped=False):
+    '''
+    Returns the vertices triangle in loglog space. Needs coordinates for vertex of the
+    90 degree angle, a length for the base of the triangle, and a slope.
+    Lastly, the flipped parameter will put the orientation at the bottom right if true
+    and at the top left if false.
+    '''
     x1, y1 = x_loc, y_loc
     x2 = x_loc + baselength
     
@@ -194,7 +203,6 @@ def logtriangle(x_loc, y_loc, baselength, slope, flipped=False):
             [x1, y2],
             ]
     
-   
     return vertices
 
 def custom_legend(ax, markerscale=2, frameon=False, fontsize=25, loc=None):
@@ -204,38 +212,55 @@ def custom_legend(ax, markerscale=2, frameon=False, fontsize=25, loc=None):
         fontsize=fontsize, 
         loc=loc)
     
+# Open DF
+file = os.path.join(abs_path, 'data.pkl')
+df = pd.read_pickle(file)
 
 # Set mpl font, and fontsizes for both math- and text-mode
 import matplotlib 
 from cycler import cycler
 
+# A colorset
+cmap = plt.cm.Reds
+
+# Normalize the parameters to map them between 0 and 1
+R = [df.loc[ii, 'drop_radii'] for ii in df.index]
+norm = mcolors.LogNorm(vmin=min(R)*0.7, vmax=max(R)*1.1)
+
 # Select colors for the standard color cycle
-hex_colors_np = np.array(['#a1132f', '#46b3d1', '#77ac31', '#7e2f8c', '#ebb120', '#d95317', '#1a71ad'])
+hex_colors = np.array(['#a1132f', '#46b3d1', '#77ac31', '#7e2f8c', '#ebb120', '#d95317', '#1a71ad'])
 
 # Set as the default color cycle
-matplotlib.rcParams["axes.prop_cycle"] = cycler(color=hex_colors_np)
+matplotlib.rcParams["axes.prop_cycle"] = cycler(color=hex_colors)
+
+# Set font to be latex mathtext
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+
+# Inrease tick- and axis label sizes
 matplotlib.rc('xtick', labelsize=size) 
 matplotlib.rc('ytick', labelsize=size)
 matplotlib.rc('axes', labelsize=size)
 
-# Open DF
-file = os.path.join(abs_path, 'data.pkl')
-df = pd.read_pickle(file)
-
+# Create figures
 plt.close('all')
-
-fig1, ax1 = plt.subplots(figsize=(7, 6))
-fig2, ax2 = plt.subplots(figsize=(7, 6))
+fig1, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+ax1 = ax[0]
+ax2 = ax[1]
+# fig2, ax2 = plt.subplots(figsize=(7, 6))
 fig3, ax3 = plt.subplots(figsize=(7, 6))
 fig4, ax4 = plt.subplots(figsize=(7, 6))
 fig5, ax5 = plt.subplots(figsize=(7, 6))
 
-unit = 1e6
+# Set unit of the axis labels
+unit = 1e6 # Micrometers
 
+# collect all measurements
+f_all = []
+y0h0 = []
+
+# Loop measurement realizations
 for ii in df.index:
-
     # Load all the data from the dataframe
     r_max_top = df.loc[ii, 'R_max_top']
     frames_top = df.loc[ii, 'frames_top']
@@ -262,22 +287,18 @@ for ii in df.index:
     # plt.plot(r_max_top[:, 0] / alpha_top, r_max_top[:, 1] / alpha_top, '.-', color='green')
     
     # Plot of the top view heights of each individual measurement
-    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
+    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')#, label=f'R = {R * 1e3:.2f} mm')
     # ax1.set_xlim([1e-5, 1e-3])
 
     x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
 
     # Plot of side view heights of each individual measurement
-    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
+    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', color=cmap(norm(R)), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
-    ax3.loglog(x_top[1:] / t_i, r_plot_top[1:] / R, '.', lw=2)
-    
-    # Plot the top view heights of each individual measurement, divided over
-    # the intrinsic length scale
-    ax4.loglog(x_side[1:] / t_i, r_plot_side[1:] * (rho / gamma)**1/3, '.', lw=2)
+    ax3.loglog(x_top[1:] / t_i, r_plot_top[1:] / R, '.', lw=2, color=cmap(norm(R)))
     
     # Compute h_0 / y_0
     indices = find_matching_indices(frames_top, frames_side)
@@ -291,6 +312,8 @@ for ii in df.index:
         f.append(f_0)
         
     t = (f - frames_top[0]) / fps   
+    f_all.append(f - frames_top[0])
+    y0h0.append(theta)
     ax5.loglog(t * 1e3, theta, '.', label=f'{ii}')
     ax5.loglog(*power_law(1.25e-1, 1e-1, 1e0, 1/6), '--', color='black')
     ax5.set_ylabel("$y_0 / h_0$")
@@ -298,8 +321,12 @@ for ii in df.index:
     ax5.set_ylim([0.1, 0.3])
     # ax5.legend()
 
+# Create fig1 legend so that burton and hack data does not get added
+handles, labels = ax1.get_legend_handles_labels()
+labels, handles = zip(*sorted(zip(labels, handles), key=lambda t:t[0]))
+fig1.legend(handles, labels, loc='upper center', ncols=4, markerscale=2, fontsize=15)
 
-vertices = logtriangle(500, 200, 700, 1/2)
+vertices = logtriangle(100, 400, 400, 1/2, flipped=True)
 
 xlabel_loc = [10**((np.log10(vertices[0][0]) + np.log10(vertices[1][0])) / 2),
               10**((np.log10(vertices[0][1]) + np.log10(vertices[1][1])) / 2)]
@@ -311,18 +338,23 @@ x, y = zip(*vertices)
 
 # Plot triangle and add side labels
 ax1.plot(x, y, color='black')
-ax1.annotate('2', xlabel_loc, textcoords="offset points", xytext=(0, -20), fontsize=25, ha='center')
-ax1.annotate('1', ylabel_loc, textcoords="offset points", xytext=(20, 0), fontsize=25, ha='right')
-ax1.loglog(data_burton[:, 0], data_burton[:, 1], '^', color='black', label='Burton &\nTaborek. 2007')
-custom_legend(ax1, fontsize=18, loc='upper left')
+ax1.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fontsize=25, ha='right')
+ax1.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
+ax1.loglog(data_burton[:, 0], data_burton[:, 1], 'd', color='black', label='Burton &\nTaborek. 2007')
+ax1.legend([ax1.lines[-1]], ['Burton & Taborek 2007'], 
+           markerscale=2,
+           frameon=False,
+           fontsize=15, 
+           loc='upper left')
+# custom_legend(ax1, fontsize=18, loc='upper left')
 # ax1.set_title("Top view, $y_0$ as a function of time")
-ax1.set_ylim([10**(1.7), 10**(2.8)])
+ax1.set_ylim([0.5e2, 1.5e3])
 ax1.set_xlabel('$t - t_0\, [\mu s]$')
 ax1.set_ylabel('$y_0 [\mu m]$')
 ax1.xaxis.set_ticks_position('both')
 ax1.yaxis.set_ticks_position('both')
 
-
+# Vertices from log triangle
 vertices = logtriangle(210, 20, 1000, 2/3, flipped=False)
 
 xlabel_loc = [10**((np.log10(vertices[0][0]) + np.log10(vertices[1][0])) / 2),
@@ -337,9 +369,18 @@ x, y = zip(*vertices)
 ax2.plot(x, y, color='black')
 ax2.annotate('3', xlabel_loc, textcoords="offset points", xytext=(0, -20), fontsize=25, ha='center')
 ax2.annotate('2', ylabel_loc, textcoords="offset points", xytext=(20, 0), fontsize=25, ha='right')
+
+# Plot the data from Hack
 ax2.loglog(data_hack[:, 0] * 1e6, data_hack[:, 1] * 1e6, '>', color='black', label='Hack et al. 2020')
-ax2.set_xlim([1e1, 1.5e4])
-custom_legend(ax2, fontsize=20, loc='upper left')
+ax2.set_xlim([0.5e1, 1e4])
+
+# Set custom legend
+ax2.legend([ax2.lines[-1]], ['Hack et al. 2017'], 
+           markerscale=2,
+           frameon=False,
+           fontsize=15, 
+           loc='upper left')
+# custom_legend(ax2, fontsize=20, loc='upper left')
 ax2.set_ylabel('$h_0 [\mu m]$')
 ax2.set_xlabel('$t - t_0\, [\mu s]$')
 # ax2.set_title("Side view, $h_0$ as a function of time")
@@ -347,21 +388,38 @@ ax2.xaxis.set_ticks_position('both')
 ax2.yaxis.set_ticks_position('both')
 
 # ax3.set_title("top view, divided by the drop radius")
-ax3.set_xlabel(r'$(t - t_0) / \tau_i$')
-ax3.set_ylabel('$y_0\, /\, R$')
+ax3.set_xlabel(r'$(t - t_0) / t_i$')
+ax3.set_ylabel('$y_0/R$')
 
-# ax4.set_title("side view, divided by the intrinsic length scale of dodecane")
-ax4.set_xlabel(r'$(t - t_0) / \tau_i$')
-ax4.set_ylabel('$h_0\, /\, l_v$')
+fmax = 0
+for f in f_all:
+    if (f[-1] > fmax):
+        fmax = f[-1]
+        
+data = np.empty((len(f_all), fmax))
+data[:] = np.nan
+for ii, (f, yh) in enumerate(zip(f_all, y0h0)):
+    data[ii, f-1] = yh 
+mean = np.nanmean(data, axis=0)
+std = np.nanstd(data, axis=0)
+t = np.arange(0, len(mean)) / fps
 
-# ax1.grid()
-# ax2.grid()
-# ax3.grid()
-# ax4.grid()
-# ax5.grid()
+def fun_exp(x, A, p):
+    return A*x**p
+
+# Plot the mean of y0/h0
+start=5
+cutoff = -40
+ax4.errorbar(t[start:cutoff]*1e3, mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
+ax4.set_xlabel(r'$(t - t_0)[ms]$')
+ax4.set_ylabel('$y_0 / h_0$')
+
+idx = ~np.isnan(mean)
+popt, pcov = curve_fit(fun_exp, t[idx], mean[idx], p0=[1, 1/6])
 
 fig1.tight_layout()
-fig2.tight_layout()
+fig1.subplots_adjust(top=0.85)
+# fig2.tight_layout()
 fig3.tight_layout()
 fig4.tight_layout()
 fig5.tight_layout()
