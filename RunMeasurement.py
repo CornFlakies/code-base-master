@@ -176,6 +176,9 @@ def power_law(height, x_start, x_end, p):
     x = np.linspace(x_start, x_end, 2)
     return x, height * (x/x[0])**(p)
 
+def fit_power_law(x, A, p):
+    return A*x**p
+
 def logtriangle(x_loc, y_loc, baselength, slope, flipped=False):
     '''
     Returns the vertices triangle in loglog space. Needs coordinates for vertex of the
@@ -251,6 +254,17 @@ ax2 = ax[1]
 fig3, ax3 = plt.subplots(figsize=(7, 6))
 fig4, ax4 = plt.subplots(figsize=(7, 6))
 fig5, ax5 = plt.subplots(figsize=(7, 6))
+fig6, ax6 = plt.subplots(figsize=(7, 6))
+fig7, ax7 = plt.subplots(figsize=(7, 6))
+
+# Make tight layouts
+fig1.tight_layout()
+fig1.subplots_adjust(top=0.85)
+# fig2.tight_layout()
+fig3.tight_layout()
+fig4.tight_layout()
+fig5.tight_layout()
+fig6.tight_layout()
 
 # Set unit of the axis labels
 unit = 1e6 # Micrometers
@@ -258,6 +272,7 @@ unit = 1e6 # Micrometers
 # collect all measurements
 f_all = []
 y0h0 = []
+power_laws = []
 
 # Loop measurement realizations
 for ii in df.index:
@@ -287,14 +302,22 @@ for ii in df.index:
     # plt.plot(r_max_top[:, 0] / alpha_top, r_max_top[:, 1] / alpha_top, '.-', color='green')
     
     # Plot of the top view heights of each individual measurement
-    ax1.loglog(x_top[1:] * 1e6, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')#, label=f'R = {R * 1e3:.2f} mm')
-    # ax1.set_xlim([1e-5, 1e-3])
+    ax1.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')#, label=f'R = {R * 1e3:.2f} mm')
+    start=60
+    end=80
+    popt, pcov = curve_fit(fit_power_law, x_top[start:end] * unit, r_plot_top[start:end] * unit, p0=[1, 1/2])
+    power_laws.append([popt[0], R])     
+    x_dat = np.logspace(1, 3, 50)
+    # ax1.loglog(x_dat, fit_power_law(x_dat, *popt), '.-')
+
+    print(popt[0])
+    print(R)
 
     x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
 
     # Plot of side view heights of each individual measurement
-    ax2.loglog(x_side[1:] * 1e6, r_plot_side[1:] * unit, '.', color=cmap(norm(R)), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
+    ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(norm(R)), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
@@ -314,13 +337,19 @@ for ii in df.index:
     t = (f - frames_top[0]) / fps   
     f_all.append(f - frames_top[0])
     y0h0.append(theta)
-    ax5.loglog(t * 1e3, theta, '.', label=f'{ii}')
-    ax5.loglog(*power_law(1.25e-1, 1e-1, 1e0, 1/6), '--', color='black')
+    ax5.plot(t * 1e3, theta, '.', label=f'{ii}')
+    # ax5.plot(*power_law(1.25e-1, 1e-1, 1e0, 1/6), '--', color='black')
     ax5.set_ylabel("$y_0 / h_0$")
-    ax5.set_xlabel("$t [ms]$")
+    ax5.set_xlabel("$t-t_0 [ms]$")
     ax5.set_ylim([0.1, 0.3])
     # ax5.legend()
+    
+    ax6.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')
+    ax6.set_ylim([0.5e2, 1.5e3])
 
+#------------------------------------------------------------------------------
+#----------------------- MAKE TOP VIEW PLOT WITH BURTON DATA ------------------
+#------------------------------------------------------------------------------
 # Create fig1 legend so that burton and hack data does not get added
 handles, labels = ax1.get_legend_handles_labels()
 labels, handles = zip(*sorted(zip(labels, handles), key=lambda t:t[0]))
@@ -335,6 +364,12 @@ ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
 
 # Unzip the vertices into x and y coordinates
 x, y = zip(*vertices)
+
+ax6.plot(x, y, color='black')
+ax6.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fontsize=25, ha='right')
+ax6.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
+ax6.set_xlabel(r'$t - t_0 [\mu s]$')
+ax6.set_ylabel('$y_0 [\mu m]$')
 
 # Plot triangle and add side labels
 ax1.plot(x, y, color='black')
@@ -354,6 +389,9 @@ ax1.set_ylabel('$y_0 [\mu m]$')
 ax1.xaxis.set_ticks_position('both')
 ax1.yaxis.set_ticks_position('both')
 
+#------------------------------------------------------------------------------
+#------------------------ MAKE SIDE VIEW PLOT WITH HACK DATA ------------------
+#------------------------------------------------------------------------------
 # Vertices from log triangle
 vertices = logtriangle(210, 20, 1000, 2/3, flipped=False)
 
@@ -391,6 +429,9 @@ ax2.yaxis.set_ticks_position('both')
 ax3.set_xlabel(r'$(t - t_0) / t_i$')
 ax3.set_ylabel('$y_0/R$')
 
+#------------------------------------------------------------------------------
+# --------------------------------- MAKE Y0H0 PLOT ----------------------------
+#------------------------------------------------------------------------------
 fmax = 0
 for f in f_all:
     if (f[-1] > fmax):
@@ -404,24 +445,31 @@ mean = np.nanmean(data, axis=0)
 std = np.nanstd(data, axis=0)
 t = np.arange(0, len(mean)) / fps
 
-def fun_exp(x, A, p):
-    return A*x**p
-
-# Plot the mean of y0/h0
+# Set start and cutoff params
 start=5
 cutoff = -40
-ax4.errorbar(t[start:cutoff]*1e3, mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
+t*=1e3
+
+# Fit power law to data
+idx = ~np.isnan(mean)
+popt, pcov = curve_fit(fit_power_law, t[idx], mean[idx], p0=[1, 1/6])
+x_dat = np.linspace(t[start], t[cutoff], 200)
+
+# Plot the mean of y0/h0
+ax4.errorbar(t[start:cutoff], mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
+ax4.plot(x_dat, fit_power_law(x_dat, *popt), '-.', lw=3, color='black', label=rf'$y_0/h_0 \sim t^{{{popt[1]:.3f}}}$')
+custom_legend(ax4)
 ax4.set_xlabel(r'$(t - t_0)[ms]$')
 ax4.set_ylabel('$y_0 / h_0$')
 
-idx = ~np.isnan(mean)
-popt, pcov = curve_fit(fun_exp, t[idx], mean[idx], p0=[1, 1/6])
-
-fig1.tight_layout()
-fig1.subplots_adjust(top=0.85)
-# fig2.tight_layout()
-fig3.tight_layout()
-fig4.tight_layout()
-fig5.tight_layout()
+#------------------------------------------------------------------------------
+# --------------------------------- MAKE A(R) plot ----------------------------
+#------------------------------------------------------------------------------
+Adat = []
+Rdat = []
+for A, R in power_laws:
+    Adat.append(A)
+    Rdat.append(R)
+ax7.plot(Rdat, Adat, 'o')
 
 plt.show()
