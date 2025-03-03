@@ -176,7 +176,7 @@ def power_law(height, x_start, x_end, p):
     x = np.linspace(x_start, x_end, 2)
     return x, height * (x/x[0])**(p)
 
-def fit_power_law(x, A, p):
+def fit_power_law(x, A, p=1/2):
     return A*x**p
 
 def logtriangle(x_loc, y_loc, baselength, slope, flipped=False):
@@ -304,14 +304,11 @@ for ii in df.index:
     # Plot of the top view heights of each individual measurement
     ax1.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')#, label=f'R = {R * 1e3:.2f} mm')
     start=60
-    end=80
-    popt, pcov = curve_fit(fit_power_law, x_top[start:end] * unit, r_plot_top[start:end] * unit, p0=[1, 1/2])
+    end=-1
+    popt, pcov = curve_fit(fit_power_law, x_top[start:end], r_plot_top[start:end], p0=[1])
     power_laws.append([popt[0], R])     
-    x_dat = np.logspace(1, 3, 50)
-    # ax1.loglog(x_dat, fit_power_law(x_dat, *popt), '.-')
-
-    print(popt[0])
-    print(R)
+    x_dat = np.logspace(-4, -2, 50)
+    ax3.loglog(x_dat, fit_power_law(x_dat, *popt), '.-')
 
     x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
@@ -321,7 +318,7 @@ for ii in df.index:
     
     # Plot the top view heights of each individual measurement, divided over
     # the intrinsic length scale
-    ax3.loglog(x_top[1:] / t_i, r_plot_top[1:] / R, '.', lw=2, color=cmap(norm(R)))
+    ax3.loglog(x_top[1:], r_plot_top[1:], '.', lw=2, color=cmap(norm(R)))
     
     # Compute h_0 / y_0
     indices = find_matching_indices(frames_top, frames_side)
@@ -470,6 +467,9 @@ Rdat = []
 for A, R in power_laws:
     Adat.append(A)
     Rdat.append(R)
-ax7.plot(Rdat, Adat, 'o')
+idx = np.argsort(Rdat)
+Rdat = np.asarray(Rdat)[idx]
+Adat = np.asarray(Adat)[idx]
+ax7.plot(Rdat, Adat, '-o')
 
 plt.show()

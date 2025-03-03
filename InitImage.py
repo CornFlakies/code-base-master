@@ -60,7 +60,7 @@ def create_config_from_suite(abs_path, fps):
                        show=False)
             
             # Convert Radius
-            R = np.mean(radii)
+            R = (radii[0] * radii[1]) / (radii[0] + radii[1])
             R *= alpha_top
             
             # User select starting frame from the batch of measurements
