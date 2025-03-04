@@ -146,6 +146,43 @@ df = pd.DataFrame(df_data)
 file = os.path.join(abs_path, 'data.pkl')
 df.to_pickle(file)
 
+#%% Replace R
+
+# Load the files and directories from path
+contents = os.listdir(abs_path)
+
+# Open DF
+file = os.path.join(abs_path, 'data.pkl')
+df = pd.read_pickle(file)
+ii = 0
+
+# Loop measurement realizations
+for directory in contents:
+    if bool(re.search("meas", directory)):
+        print(directory)
+        
+        # Load init view images and get drop radii
+        path_init_view = os.path.join(abs_path, directory, 'init_top_view')
+        path_init_view_img, init_view_img = hp.load_files(path_init_view, header="tif")
+        init_view_img = sk.io.imread(path_init_view_img[0])
+        
+        # Find radii
+        radii, centers = iim.get_drop_radii(init_view_img)
+        alpha_top = df.loc[ii, 'alpha_top']
+        
+        # Convert radii to effective curvature, then convert to meters
+        R = (radii[0] * radii[1]) / (radii[0] + radii[1])
+        R *= alpha_top
+        
+        # Save R
+        df.loc[ii, 'drop_radii'] = R
+        
+        # truncate index
+        ii += 1
+        
+# Save to csv file
+file = os.path.join(abs_path, 'data.pkl')
+df.to_pickle(file)
 
 #%% Plot data
 size = 25
@@ -257,15 +294,6 @@ fig5, ax5 = plt.subplots(figsize=(7, 6))
 fig6, ax6 = plt.subplots(figsize=(7, 6))
 fig7, ax7 = plt.subplots(figsize=(7, 6))
 
-# Make tight layouts
-fig1.tight_layout()
-fig1.subplots_adjust(top=0.85)
-# fig2.tight_layout()
-fig3.tight_layout()
-fig4.tight_layout()
-fig5.tight_layout()
-fig6.tight_layout()
-
 # Set unit of the axis labels
 unit = 1e6 # Micrometers
 
@@ -298,11 +326,8 @@ for ii in df.index:
     # Define inertial time scale
     t_i = np.sqrt((rho * R**3) / gamma)
     
-    # plt.figure()
-    # plt.plot(r_max_top[:, 0] / alpha_top, r_max_top[:, 1] / alpha_top, '.-', color='green')
-    
     # Plot of the top view heights of each individual measurement
-    ax1.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')#, label=f'R = {R * 1e3:.2f} mm')
+    ax1.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.3f} mm')#, label=f'R = {R * 1e3:.2f} mm')
     start=60
     end=-1
     popt, pcov = curve_fit(fit_power_law, x_top[start:end], r_plot_top[start:end], p0=[1])
@@ -426,6 +451,10 @@ ax2.yaxis.set_ticks_position('both')
 ax3.set_xlabel(r'$(t - t_0) / t_i$')
 ax3.set_ylabel('$y_0/R$')
 
+# ax3.set_title("top view, divided by the drop radius")
+ax6.set_xlabel(r'$t - t_0\, [\mu s]$')
+ax6.set_ylabel('$y_0\, [\mu s]$')
+
 #------------------------------------------------------------------------------
 # --------------------------------- MAKE Y0H0 PLOT ----------------------------
 #------------------------------------------------------------------------------
@@ -445,7 +474,7 @@ t = np.arange(0, len(mean)) / fps
 # Set start and cutoff params
 start=5
 cutoff = -40
-t*=1e3
+t *= 1e3
 
 # Fit power law to data
 idx = ~np.isnan(mean)
@@ -471,5 +500,16 @@ idx = np.argsort(Rdat)
 Rdat = np.asarray(Rdat)[idx]
 Adat = np.asarray(Adat)[idx]
 ax7.plot(Rdat, Adat, '-o')
+
+
+# Make tight layouts
+fig1.tight_layout()
+fig1.subplots_adjust(top=0.85)
+# fig2.tight_layout()
+fig3.tight_layout()
+fig4.tight_layout()
+fig5.tight_layout()
+fig6.tight_layout()
+fig7.tight_layout()
 
 plt.show()
