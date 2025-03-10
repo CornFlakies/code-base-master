@@ -197,9 +197,9 @@ class ImageVisualizer:
     def get_data(self):
         return self.start_frame, self.manual_points
     
-# # # Define location measurement suite
-# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas2\\top_view\\dodecane_top_view.tif"
-# # file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\side_view\\dodecane_side_view.tif"    
+# # Define location measurement suite
+# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\top_view\\dodecane_top_view.tif"
+file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\side_view\\dodecane_side_view.tif"    
 
-# plt.close('all')
-# iv = ImageVisualizer(file_path, view='top')
+plt.close('all')
+iv = ImageVisualizer(file_path, view='top')

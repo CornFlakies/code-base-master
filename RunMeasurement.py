@@ -41,6 +41,9 @@ eta = 1.36e-3 # Pa s
 gamma =  25e-3 # N / m
 rho = 750 # kg / m^3
 # l_v = eta**2 / (gamma * rho)
+# t_v = eta**3 / (gamma**2 * rho)
+t_i = np.sqrt(rho * (1e-3)**3 / gamma)
+Oh = eta / np.sqrt(rho * gamma * 1e-3)
 
 #%% 
 
@@ -319,7 +322,7 @@ for ii in df.index:
         frames_side = np.delete(frames_side, [11, 18], axis=0)
         
 
-    # Define x-values
+    # Define x-values and y-values of top view plot
     x_top = (frames_top - frames_top[0]) / fps
     r_plot_top = np.linalg.norm(r_max_top - r_max_top[0], axis=1)    
     
@@ -335,6 +338,7 @@ for ii in df.index:
     x_dat = np.logspace(-4, -2, 50)
     ax3.loglog(x_dat, fit_power_law(x_dat, *popt), '.-')
 
+    # Define x- and y-values of side view plot
     x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
 
@@ -387,6 +391,7 @@ ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
 # Unzip the vertices into x and y coordinates
 x, y = zip(*vertices)
 
+# plot triangle and add side labels
 ax6.plot(x, y, color='black')
 ax6.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fontsize=25, ha='right')
 ax6.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
@@ -487,6 +492,14 @@ ax4.plot(x_dat, fit_power_law(x_dat, *popt), '-.', lw=3, color='black', label=rf
 custom_legend(ax4)
 ax4.set_xlabel(r'$(t - t_0)[ms]$')
 ax4.set_ylabel('$y_0 / h_0$')
+ax4.set_yticks(np.linspace(0.15, 0.25, 5))
+
+# Create a secondary y-axis with numeric values, but keep it aligned
+ax8 = ax4.twinx()
+ax8.set_yticks(np.linspace(0.15, 0.25, 5))
+ax8.set_yticklabels(np.linspace(0.15, 0.25, 5) * 180 / np.pi)  # Numeric labels
+ax8.set_ylabel(r"$\theta$")
+
 
 #------------------------------------------------------------------------------
 # --------------------------------- MAKE A(R) plot ----------------------------
@@ -500,7 +513,6 @@ idx = np.argsort(Rdat)
 Rdat = np.asarray(Rdat)[idx]
 Adat = np.asarray(Adat)[idx]
 ax7.plot(Rdat, Adat, '-o')
-
 
 # Make tight layouts
 fig1.tight_layout()
