@@ -12,15 +12,15 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 # Input and output directories
-input_folder = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\init_top_view\\"
-output_folder = "D:\\masterproject\\example_figures\\raw_data\\side_cropped"
+input_folder = "D:\\masterproject\\example_figures\\raw_data\\starting_frame"
+output_folder = "D:\\masterproject\\example_figures\\raw_data\\starting_frame\\cropped"
 
 # Ensure output folder exists
 os.makedirs(output_folder, exist_ok=True)
 
-top_left_loc = [75, 180]
-width = 20
-height = 192.3
+top_left_loc = [250, 70]
+width = 100
+height = 250
 bottom_left_loc = [top_left_loc[0] + width, top_left_loc[1]+ height]
 
 # Define crop settings (left, upper, right, lower)

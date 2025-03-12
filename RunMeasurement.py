@@ -40,10 +40,39 @@ abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 eta = 1.36e-3 # Pa s
 gamma =  25e-3 # N / m
 rho = 750 # kg / m^3
-# l_v = eta**2 / (gamma * rho)
-# t_v = eta**3 / (gamma**2 * rho)
-t_i = np.sqrt(rho * (1e-3)**3 / gamma)
-Oh = eta / np.sqrt(rho * gamma * 1e-3)
+eta0 = 1e-3 # Pa s
+gamma0 = 72e-3 # N / m
+rho0 = 998 # kg / m^3
+
+R = 1e-3 # m
+l_v = eta**2 / (gamma * rho)
+t_v = eta**3 / (gamma**2 * rho)
+tau_v = eta * R / gamma
+t_v0 = eta0**3 / (gamma0**2 * rho0)
+t_i = np.sqrt(rho * (R)**3 / gamma)
+Oh = eta / np.sqrt(rho * gamma * R)
+l_c = R * Oh
+t_c = tau_v * Oh
+
+Rb = 4e-3 # m
+l_n = 0.5e-6 # natural viscous length scale
+S = 5e-3 # N / m 
+Ohb = eta / np.sqrt(R * eta**2 / l_n)
+
+def cross_over(x, C_v=1, C_i=1):
+    return (1/(C_v * x) + 1/(C_i * np.sqrt(x)))**(-1)
+
+def cross_over_visc(x, C_v=1):
+    return C_v * x
+
+def cross_over_iner(x, C_i=1):
+    return C_i * np.sqrt(x)
+
+def burtonius_visc(x):
+    return 1.65 / (4 * np.pi) * (eta / rho / l_n) * x
+
+def burtonius_iner(x):
+    return 1.024 * (eta**2 * Rb / l_n / rho**2)**(1/4) * x**(1/2)
 
 #%% 
 
@@ -336,7 +365,6 @@ for ii in df.index:
     popt, pcov = curve_fit(fit_power_law, x_top[start:end], r_plot_top[start:end], p0=[1])
     power_laws.append([popt[0], R])     
     x_dat = np.logspace(-4, -2, 50)
-    ax3.loglog(x_dat, fit_power_law(x_dat, *popt), '.-')
 
     # Define x- and y-values of side view plot
     x_side = (frames_side - frames_top[0]) / fps
@@ -345,9 +373,8 @@ for ii in df.index:
     # Plot of side view heights of each individual measurement
     ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(norm(R)), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     
-    # Plot the top view heights of each individual measurement, divided over
-    # the intrinsic length scale
-    ax3.loglog(x_top[1:], r_plot_top[1:], '.', lw=2, color=cmap(norm(R)))
+    # Plot the top view heights of each individual measurement
+    ax3.loglog(x_top[1:] / t_c, r_plot_top[1:] / l_c, '.', lw=2, color=cmap(norm(R)))
     
     # Compute h_0 / y_0
     indices = find_matching_indices(frames_top, frames_side)
@@ -363,13 +390,13 @@ for ii in df.index:
     t = (f - frames_top[0]) / fps   
     f_all.append(f - frames_top[0])
     y0h0.append(theta)
-    ax5.plot(t * 1e3, theta, '.', label=f'{ii}')
+    ax5.plot(t * 1e3, theta, '.', color=cmap(norm(R)), label=f'{ii}')
     # ax5.plot(*power_law(1.25e-1, 1e-1, 1e0, 1/6), '--', color='black')
     ax5.set_ylabel("$y_0 / h_0$")
     ax5.set_xlabel("$t-t_0 [ms]$")
     ax5.set_ylim([0.1, 0.3])
     # ax5.legend()
-    
+
     ax6.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')
     ax6.set_ylim([0.5e2, 1.5e3])
 
@@ -392,11 +419,30 @@ ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
 x, y = zip(*vertices)
 
 # plot triangle and add side labels
+C_i = 1.024
+C_v = 1.65 / 4 / np.pi
+l_cb = 253e-6 # from paper
+t_cb = l_cb * eta / S / C_v # Using crossover length from paper
+x_ana = np.logspace(-10, 5, 100)
+visc = burtonius_visc(x_ana)
+iner = burtonius_iner(x_ana) 
+ax6.loglog(x_ana * 1e6, visc * 1e6, '-.', color='black', label=r'$1.65\, (St/4\pi\eta_0) $')
+ax6.loglog(x_ana * 1e6, iner * 1e6, '--', color='black', label=r'$1.024\, (R S / \rho_0)^{1/4}\, t^{1/2} $')
+ax6.loglog(x_ana * 1e6, cross_over(x_ana / t_cb, C_v, C_i) * l_cb * 1e6, '-', color='black', label=r'$f(\xi)\, l_c$')
 ax6.plot(x, y, color='black')
 ax6.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fontsize=25, ha='right')
 ax6.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
 ax6.set_xlabel(r'$t - t_0 [\mu s]$')
 ax6.set_ylabel('$y_0 [\mu m]$')
+ax6.loglog(data_burton[:, 0], data_burton[:, 1], 'd', color='black', label='Burton &\nTaborek. 2007')
+
+x_ana = np.linspace(1e-7, 1e0, 80)
+ax6.legend([ax6.lines[-1]], ['Burton & Taborek 2007'], 
+           markerscale=2,
+           frameon=False,
+           fontsize=15, 
+           loc='upper left')
+ax6.set_xlim([1e1, 1e4])
 
 # Plot triangle and add side labels
 ax1.plot(x, y, color='black')
@@ -440,7 +486,7 @@ ax2.loglog(data_hack[:, 0] * 1e6, data_hack[:, 1] * 1e6, '>', color='black', lab
 ax2.set_xlim([0.5e1, 1e4])
 
 # Set custom legend
-ax2.legend([ax2.lines[-1]], ['Hack et al. 2017'], 
+ax2.legend([ax2.lines[-1]], ['Hack et al. 2020'], 
            markerscale=2,
            frameon=False,
            fontsize=15, 
@@ -453,12 +499,24 @@ ax2.xaxis.set_ticks_position('both')
 ax2.yaxis.set_ticks_position('both')
 
 # ax3.set_title("top view, divided by the drop radius")
-ax3.set_xlabel(r'$(t - t_0) / t_i$')
-ax3.set_ylabel('$y_0/R$')
+xi = np.logspace(-2, 7, 100)
+ax3.loglog(data_burton[:, 0] * 1e-6 / t_c, data_burton[:, 1] * 1e-6 / l_c, '>', color='black', label='Burton & Taborek 2007')
+ax3.loglog(xi, cross_over(xi), '-', color='black', label=r'$f\, (\xi)$')
+ax3.loglog(xi, cross_over_visc(xi), '--', color='black', label=r'$C_v \xi$')
+ax3.loglog(xi, cross_over_iner(xi), '-.', color='black', label=r'$C_i \sqrt{\xi}$')
+ax3.set_ylim([1e-2, 1e3])
+ax3.set_xlim([1e-1, 1e7])
+ax3.set_xlabel(r'$t/t_c$')
+ax3.set_ylabel('$y_0/l_c$')
+custom_legend(ax3, fontsize=15, markerscale=1.5, loc='lower right')
+ax3.minorticks_on()
+ax3.xaxis.set_ticks_position('both')
+ax3.yaxis.set_ticks_position('both')
+
 
 # ax3.set_title("top view, divided by the drop radius")
 ax6.set_xlabel(r'$t - t_0\, [\mu s]$')
-ax6.set_ylabel('$y_0\, [\mu s]$')
+ax6.set_ylabel('$y_0\, [\mu m]$')
 
 #------------------------------------------------------------------------------
 # --------------------------------- MAKE Y0H0 PLOT ----------------------------
@@ -492,12 +550,15 @@ ax4.plot(x_dat, fit_power_law(x_dat, *popt), '-.', lw=3, color='black', label=rf
 custom_legend(ax4)
 ax4.set_xlabel(r'$(t - t_0)[ms]$')
 ax4.set_ylabel('$y_0 / h_0$')
-ax4.set_yticks(np.linspace(0.15, 0.25, 5))
+ax4.set_ylim([0.15, 0.26])
 
 # Create a secondary y-axis with numeric values, but keep it aligned
 ax8 = ax4.twinx()
-ax8.set_yticks(np.linspace(0.15, 0.25, 5))
-ax8.set_yticklabels(np.linspace(0.15, 0.25, 5) * 180 / np.pi)  # Numeric labels
+# ax8.set_yticks(np.linspace(0.14, 0.24, 10))
+y_ticks = np.linspace(0.15, 0.26, 10) * 180 / np.pi
+ax8.set_yticklabels(
+    [f"{label:.1f}" for label in y_ticks]
+);
 ax8.set_ylabel(r"$\theta$")
 
 
