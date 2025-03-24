@@ -199,7 +199,8 @@ class ImageVisualizer:
     
 # # Define location measurement suite
 file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\top_view\\dodecane_top_view.tif"
-# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\side_view\\dodecane_side_view.tif"    
+# file_path = "D:\\masterproject\\images\\dodecane_17012025\\set2\\meas3\\side_view\\dodecane_side_view.tif"
+# file_path = "D:\\masterproject\\images\dodecane_20032025\\set1\\meas2\\top_view\\cropped\\output.tiff"    
 
 plt.close('all')
 iv = ImageVisualizer(file_path, view='top')

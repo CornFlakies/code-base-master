@@ -25,6 +25,14 @@ plt.close('all')
 # Load data from Hack and Burton
 path_burton = "D:\\masterproject\\scrubbed_data\\burton\\top_view_points.csv"
 data_burton = pd.read_csv(path_burton).to_numpy() # in micrometer and microsecs
+path_burton = "D:\\masterproject\\scrubbed_data\\burton\\dodecane_01.csv"
+data_burton2 = pd.read_csv(path_burton).to_numpy() # centimeters and second
+data_burton2[:, 0] *= 1e6
+data_burton2[:, 1] *= 1e4
+path_burton = "D:\\masterproject\\scrubbed_data\\burton\\dodecane_02.csv"
+data_burton3 = pd.read_csv(path_burton).to_numpy() # centimeters and second
+data_burton3[:, 0] *= 1e6
+data_burton3[:, 1] *= 1e4
 
 path_hack = "D:\\masterproject\\scrubbed_data\\hack\\figure1\\1p36mPa.txt"
 data_hack = []
@@ -37,27 +45,33 @@ data_hack = np.asarray(data_hack, dtype=float)
 abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 # abs_path = "S:\\masterproject\\images\\dodecane_17012025\\set2"
 
+
+# Definition material parameters
+# DODECANE
 eta = 1.36e-3 # Pa s
 gamma =  25e-3 # N / m
 rho = 750 # kg / m^3
+
+# WATER
 eta0 = 1e-3 # Pa s
 gamma0 = 72e-3 # N / m
 rho0 = 998 # kg / m^3
 
+# Different characteristic time- and lengthscales
 R = 1e-3 # m
-l_v = eta**2 / (gamma * rho)
-t_v = eta**3 / (gamma**2 * rho)
-tau_v = eta * R / gamma
-t_v0 = eta0**3 / (gamma0**2 * rho0)
-t_i = np.sqrt(rho * (R)**3 / gamma)
-Oh = eta / np.sqrt(rho * gamma * R)
-l_c = R * Oh
-t_c = tau_v * Oh
+l_v = eta**2 / (gamma * rho) # Capillary length dodecane
+t_v = eta**3 / (gamma**2 * rho) # Viscous time scale of dodecane
+t_v0 = eta0**3 / (gamma0**2 * rho0) # Viscous time scale of water
+tau_v = eta * R / gamma # Viscous length scale of dodecane
+t_i = np.sqrt(rho * (R)**3 / gamma) # Inertial time scale of dodecane
+Oh = eta / np.sqrt(rho * gamma * R) # Ohnesorge number dodecane
+l_c = R * Oh # Crossover length dodecame
+t_c = tau_v * Oh # Crossover time dodecane
 
 Rb = 4e-3 # m
 l_n = 0.5e-6 # natural viscous length scale
 S = 5e-3 # N / m 
-Ohb = eta / np.sqrt(R * eta**2 / l_n)
+Ohb = eta / np.sqrt(rho * S * Rb) # Ohnesorge number with Burtons definitions
 
 def cross_over(x, C_v=1, C_i=1):
     return (1/(C_v * x) + 1/(C_i * np.sqrt(x)))**(-1)
@@ -69,12 +83,16 @@ def cross_over_iner(x, C_i=1):
     return C_i * np.sqrt(x)
 
 def burtonius_visc(x):
-    return 1.65 / (4 * np.pi) * (eta / rho / l_n) * x
+    return 1.65 / (4 * np.pi) * (S / eta) * x
 
 def burtonius_iner(x):
-    return 1.024 * (eta**2 * Rb / l_n / rho**2)**(1/4) * x**(1/2)
+    return 1.024 * (Rb * S / rho)**(1/4) * x**(1/2)
 
 #%% 
+
+abs_path = "D:\\masterproject\\images\\dodecane_18032025\\set1"
+abs_path = "D:\\masterproject\\images\\dodecane_20032025\\set1"
+abs_path = "D:\\masterproject\\images\\dodecane_20032025\\set1\\"
 
 # If the config files do not exist, create new ones.
 isLive = False
@@ -105,41 +123,49 @@ for directory in contents:
             except yaml.YAMLError as exc:
                 print(exc)
             
-            # Pre-load data from the manually selected points
-            r_max_side = np.load(os.path.join(abs_path, directory, 'manual_points_side.npy'))
-            r_max_top = np.load(os.path.join(abs_path, directory, 'manual_points_top.npy'))
-            
             # Load the rest of the measurement data
             frame_start_top = data['INITIAL_PARAMETERS']['INITIAL_FRAME_TOP_VIEW']
             frame_start_side = data['INITIAL_PARAMETERS']['INITIAL_FRAME_SIDE_VIEW']
-            R = data['INITIAL_PARAMETERS']['DROP_RADIUS']
+            R = data['MEASUREMENTS_PARAMETERS']['DROP_RADIUS']
             alpha_top = data['MEASUREMENTS_PARAMETERS']['CONV_TOP_VIEW']
             alpha_side = data['MEASUREMENTS_PARAMETERS']['CONV_SIDE_VIEW']
             fps = data['MEASUREMENTS_PARAMETERS']['FPS']
-            
+
             # Get drop radii
             all_radii.append(R)
             
-            # Compute heights
-            input_dir = os.path.join(abs_path, directory, 'side_view')
-            cd = ComputeLensDynamics(input_dir, 
-                                      XMIN=0, XMAX=None, 
-                                      YMIN=0, YMAX=None, 
-                                      framestart=('stack 1', frame_start_side), 
-                                      view='side')
-            data_side = cd.get_R()
+            try:                
+                # Pre-load data from the manually selected points
+                r_max_side = np.load(os.path.join(abs_path, directory, 'manual_points_side.npy'))
+
+                # Compute side view heights
+                input_dir = os.path.join(abs_path, directory, 'side_view')
+                cd = ComputeLensDynamics(input_dir, 
+                                          XMIN=0, XMAX=None, 
+                                          YMIN=0, YMAX=None, 
+                                          framestart=('stack 1', frame_start_side), 
+                                          view='side')
+                data_side = cd.get_R()
+                
+                # add the manually selected data to the computed data, then append
+                # to a list containing all the individual measurement data
+                for ii, r in enumerate(data_side): # Side view
+                    if (r != []):
+                        r_max_side[frame_start_side + ii, :] = [r[0][0], r[0][1]]
+                frames_side = np.where(~np.isnan(r_max_side[:, 0]))[0]
+                all_frames_side.append(frames_side)
+                r_max_side = r_max_side[~np.isnan(r_max_side).any(axis=1)]
+                R_all_side.append(r_max_side)
             
-            # add the manually selected data to the computed data, then append
-            # to a list containing all the individual measurement data
-            for ii, r in enumerate(data_side): # Side view
-                if (r != []):
-                    r_max_side[frame_start_side + ii, :] = [r[0][0], r[0][1]]
-            frames_side = np.where(~np.isnan(r_max_side[:, 0]))[0]
-            all_frames_side.append(frames_side)
-            r_max_side = r_max_side[~np.isnan(r_max_side).any(axis=1)]
-            R_all_side.append(r_max_side)
+            except:
+                frames_side = 0
+                r_max_side = 0
+                print("jo")
         
-            # Compute heights
+            # Pre load top view points
+            r_max_top = np.load(os.path.join(abs_path, directory, 'manual_points_top.npy'))
+            
+            # Compute top view heights
             input_dir = os.path.join(abs_path, directory, 'top_view')
             cd = ComputeLensDynamics(input_dir, 
                                       XMIN=0, XMAX=None, 
@@ -174,44 +200,6 @@ for directory in contents:
 # Create data frame from dicts
 df = pd.DataFrame(df_data) 
 
-# Save to csv file
-file = os.path.join(abs_path, 'data.pkl')
-df.to_pickle(file)
-
-#%% Replace R
-
-# Load the files and directories from path
-contents = os.listdir(abs_path)
-
-# Open DF
-file = os.path.join(abs_path, 'data.pkl')
-df = pd.read_pickle(file)
-ii = 0
-
-# Loop measurement realizations
-for directory in contents:
-    if bool(re.search("meas", directory)):
-        print(directory)
-        
-        # Load init view images and get drop radii
-        path_init_view = os.path.join(abs_path, directory, 'init_top_view')
-        path_init_view_img, init_view_img = hp.load_files(path_init_view, header="tif")
-        init_view_img = sk.io.imread(path_init_view_img[0])
-        
-        # Find radii
-        radii, centers = iim.get_drop_radii(init_view_img)
-        alpha_top = df.loc[ii, 'alpha_top']
-        
-        # Convert radii to effective curvature, then convert to meters
-        R = (radii[0] * radii[1]) / (radii[0] + radii[1])
-        R *= alpha_top
-        
-        # Save R
-        df.loc[ii, 'drop_radii'] = R
-        
-        # truncate index
-        ii += 1
-        
 # Save to csv file
 file = os.path.join(abs_path, 'data.pkl')
 df.to_pickle(file)
@@ -285,6 +273,7 @@ def custom_legend(ax, markerscale=2, frameon=False, fontsize=25, loc=None):
         loc=loc)
     
 # Open DF
+abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 file = os.path.join(abs_path, 'data.pkl')
 df = pd.read_pickle(file)
 
@@ -421,9 +410,14 @@ x, y = zip(*vertices)
 # plot triangle and add side labels
 C_i = 1.024
 C_v = 1.65 / 4 / np.pi
+
+# C_v = 4 / np.pi
 l_cb = 253e-6 # from paper
 t_cb = l_cb * eta / S / C_v # Using crossover length from paper
-x_ana = np.logspace(-10, 5, 100)
+l_cb = 3e-3 * Ohb
+t_cb = tau_v * Ohb
+# t_cb = (2 * np.pi * eta)**2 * np.sqrt(Rb / (S**3 * rho)) # equating velocities
+x_ana = np.logspace(-20, 5, 200)
 visc = burtonius_visc(x_ana)
 iner = burtonius_iner(x_ana) 
 ax6.loglog(x_ana * 1e6, visc * 1e6, '-.', color='black', label=r'$1.65\, (St/4\pi\eta_0) $')
@@ -434,7 +428,9 @@ ax6.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fonts
 ax6.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
 ax6.set_xlabel(r'$t - t_0 [\mu s]$')
 ax6.set_ylabel('$y_0 [\mu m]$')
-ax6.loglog(data_burton[:, 0], data_burton[:, 1], 'd', color='black', label='Burton &\nTaborek. 2007')
+ax6.loglog(data_burton[:, 0], data_burton[:, 1], 'd', color='black', label='Burton (scrubbed)')
+ax6.loglog(data_burton2[:, 0], data_burton2[:, 1], 'd', color='green', label='Burton (original)')
+ax6.loglog(data_burton3[:, 0], data_burton3[:, 1], 'd', color='green')
 
 x_ana = np.linspace(1e-7, 1e0, 80)
 ax6.legend([ax6.lines[-1]], ['Burton & Taborek 2007'], 
@@ -586,3 +582,88 @@ fig6.tight_layout()
 fig7.tight_layout()
 
 plt.show()
+
+#%% Make plot with zoomed out data of top view
+plt.close('all')
+
+abs_path_1 = "D:\\masterproject\\images\\dodecane_17012025\\set2"
+file = os.path.join(abs_path_1, 'data.pkl')
+df1 = pd.read_pickle(file)
+
+abs_path_2 = "D:\\masterproject\\images\\dodecane_18032025\\set1"
+file = os.path.join(abs_path_2, 'data.pkl')
+df2 = pd.read_pickle(file)
+
+abs_path_3 = "D:\\masterproject\\images\\dodecane_20032025\\set1"
+file = os.path.join(abs_path_3, 'data.pkl')
+df3 = pd.read_pickle(file)
+
+r_and_t = []
+
+# Loop measurement realizations
+for ii in df1.index:    
+    # Load all the data from the dataframe
+    r_max_top = df1.loc[ii, 'R_max_top']
+    frames_top = df1.loc[ii, 'frames_top']
+    R = df1.loc[ii, 'drop_radii']
+    fps = df1.loc[ii, 'fps']
+    alpha_top = df1.loc[ii, 'alpha_top']
+    
+    r_and_t.append([r_max_top, frames_top / fps, 'red'])
+    
+for ii in df2.index:
+    # Load all the data from the dataframe
+    r_max_top = df2.loc[ii, 'R_max_top']
+    frames_top = df2.loc[ii, 'frames_top']
+    R = df2.loc[ii, 'drop_radii']
+    fps = df2.loc[ii, 'fps']
+    alpha_top = df2.loc[ii, 'alpha_top']
+    r_and_t.append([r_max_top, frames_top / fps, 'blue'])
+    
+for ii in df3.index:
+    # Load all the data from the dataframe
+    r_max_top = df3.loc[ii, 'R_max_top']
+    frames_top = df3.loc[ii, 'frames_top']
+    R = df3.loc[ii, 'drop_radii']
+    fps = df3.loc[ii, 'fps']
+    alpha_top = df3.loc[ii, 'alpha_top']
+    if (ii == 2):
+        continue
+    r_and_t.append([r_max_top, frames_top / fps, 'green'])
+    
+fig1, ax1 = plt.subplots()
+
+rdiff = []
+for (r, t, c) in r_and_t:
+    # r = np.linalg.norm(r - r[0], axis=1)
+    r = r[:, 1] - r[0, 1]
+    # if not any(np.diff(r)[10:] > 1e-5):
+    t = t - t[0]
+    ax1.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c)
+        # ax1.loglog(np.diff(r)[10:])
+        
+# Create fig1 legend so that burton and hack data does not get added
+vertices = logtriangle(100, 400, 400, 1/2, flipped=True)
+
+xlabel_loc = [10**((np.log10(vertices[0][0]) + np.log10(vertices[1][0])) / 2),
+              10**((np.log10(vertices[0][1]) + np.log10(vertices[1][1])) / 2)]
+ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
+              10**((np.log10(vertices[1][1]) + np.log10(vertices[2][1])) / 2)]
+
+# Unzip the vertices into x and y coordinates
+x, y = zip(*vertices)
+ax1.plot(x, y, color='black')
+ax1.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fontsize=25, ha='right')
+ax1.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
+
+vertices = logtriangle(800, 200, 2000, 1/2, flipped=False)
+# Unzip the vertices into x and y coordinates
+x, y = zip(*vertices)
+ax1.plot(x, y, color='black')
+
+ax1.axhline(y=1000, linestyle='--', color='black', lw=2, label=r'$R_drop$')
+
+ax1.set_xlabel(r'$t - t_0 [\mu s]$')
+ax1.set_ylabel('$y_0 [\mu m]$')
+
+fig1.tight_layout()
