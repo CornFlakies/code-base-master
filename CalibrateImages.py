@@ -65,22 +65,25 @@ class CalibrateImages():
             return cx, cy
 
         contours = find_contours((1 - normalize_img(self.img)))
+        print(len(contours))
         centers = []
         
-        # plt.figure()
-        # plt.imshow(self.img)
+        plt.figure()
+        plt.imshow(self.img)
         
         all_lengths = []
         for c in contours:
             all_lengths.append(len(c))
-        max_length = np.max(all_lengths)
+        max_length = np.mean(all_lengths)
+        print(max_length)
         
         for ii, c in enumerate(contours):
-            if (len(c) < (max_length - (max_length/10))):
+            print(len(c))
+            if (len(c) < (max_length - (max_length/20))):
                 continue
-            # plt.plot(c[:, 1], c[:, 0], color='red')
+            plt.plot(c[:, 1], c[:, 0], color='red')
             cx, cy = find_center(c)
-            # plt.plot(cx, cy, '.', color='blue')
+            plt.plot(cx, cy, '.', color='blue')
             centers.append(np.array([cx, cy]))
     
         dist = []
@@ -100,3 +103,31 @@ class CalibrateImages():
     
         return (self.spacing / dist).mean() #mm px**-1
 
+import os
+
+abs_path = "D:\\masterproject\\images\\height_measurements\\11042024\\set5\\"
+file =  "water_height_side_calib_250micron_C001H001S0003.tif"
+calib_path = os.path.join(abs_path, file)
+calib_img = sk.io.imread(calib_path)
+plt.close('all')
+
+# Load the files and directories from path
+contents = os.listdir(abs_path)
+
+# Get images for calibration, define alpha of both top and side view
+calib_paths, calib_files = hp.load_files(abs_path, header="tif")
+ci = CalibrateImages()
+alpha = ci.run(calib_path, file)
+
+# # Multiple calibration images can be provided
+# alpha_top = []
+# alpha_side = []
+# for path, file in zip(calib_paths, calib_files):
+#     view = re.search("top|side", file).group()
+#     dist = ci.run(path, file)
+#     if (view == "top"):
+#         alpha_top.append(dist)
+#     elif (view == "side"):
+#         alpha_side.append(dist)
+        
+print(alpha)

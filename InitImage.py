@@ -49,20 +49,22 @@ def create_config_from_suite(abs_path, fps, cropping=(None, None, None, None)):
             path_init_view = os.path.join(abs_path, directory, 'init_top_view')
             path_init_view_img, init_view_img = hp.load_files(path_init_view, header="tif")
             init_view_img = sk.io.imread(path_init_view_img[0])
-            radii, centers = get_drop_radii(init_view_img)
             
-            
-            # Plot droplets and save image
-            plot_drops(radii, 
-                       centers, 
-                       init_view_img, 
-                       alpha_top, 
-                       path=os.path.join(abs_path, directory),
-                       show=False)
-            
-            # Convert Radius
-            R = (radii[0] * radii[1]) / (radii[0] + radii[1])
-            R *= alpha_top
+            try:
+                radii, centers = get_drop_radii(init_view_img)
+                # Plot droplets and save image
+                plot_drops(radii, 
+                           centers, 
+                           init_view_img, 
+                           alpha_top, 
+                           path=os.path.join(abs_path, directory),
+                           show=False)
+                
+                # Convert Radius
+                R = (radii[0] * radii[1]) / (radii[0] + radii[1])
+                R *= alpha_top
+            except:
+                R = -1 # No radius found
             
             # User select starting frame from the batch of measurements
             # Do a check if config file alread exists

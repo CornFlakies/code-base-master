@@ -150,7 +150,20 @@ def find_edge_extrema(image, contours):
             com.append(np.mean(c[:, 0]))
     midline = np.sum(com) / len(com)
     
+    def is_contour_closed(contour, tol=1e-6):
+        """Check if the contour is closed by comparing first and last point."""
+        return np.linalg.norm(contour[0] - contour[-1]) < tol
+    
+    relevant_contours = []
     for ii, c in enumerate(contours):
+        if is_contour_closed(c, tol=1e-3):
+            continue
+        else:
+            relevant_contours.append(c)
+            
+    print(len(contours))
+    print(len(relevant_contours))
+    for ii, c in enumerate(relevant_contours):
         ct = c[:, 0] < (midline + 20)
         cb = c[:, 0] > (midline - 20)
         # Remove the circular contour crossing the midline

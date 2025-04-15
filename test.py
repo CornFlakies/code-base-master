@@ -88,9 +88,12 @@ def process_tiff_stack(input_path, output_path):
 
 
 # Input and output directories
-input_folder = "D:\\masterproject\\example_figures\\raw_data\\starting_frame"
-input_folder = "D:\\masterproject\\images\dodecane_20032025\\set1\\meas6\\top_view"
-output_folder = "D:\\masterproject\\images\dodecane_20032025\\set1\\meas6\\top_view\\cropped\\"
+# input_folder = "D:\\masterproject\\example_figures\\raw_data\\starting_frame"
+# input_folder = "D:\\masterproject\\images\dodecane_20032025\\set1\\meas6\\top_view"
+# output_folder = "D:\\masterproject\\images\dodecane_20032025\\set1\\meas6\\top_view\\cropped\\"
+# input_folder = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set1_no_zoom\\meas5\\top_view"
+# output_folder = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set1_no_zoom\\meas5\\top_view\\cropped"
+
 hp.create_output_dir(output_folder)
 
 plt.close('all')

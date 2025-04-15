@@ -89,16 +89,16 @@ def burtonius_iner(x):
     return 1.024 * (Rb * S / rho)**(1/4) * x**(1/2)
 
 #%% 
-
-abs_path = "D:\\masterproject\\images\\dodecane_18032025\\set1"
-abs_path = "D:\\masterproject\\images\\dodecane_20032025\\set1"
-abs_path = "D:\\masterproject\\images\\dodecane_20032025\\set1\\"
+abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set2_zoom"
+abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set2_zoom_higher_fps"
+abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set2_zoom_highest_fps"
+abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set1_no_zoom"
+fps = 10000
 
 # If the config files do not exist, create new ones.
-isLive = False
+isLive = True
 if isLive:
     # FPS needs to be defined by the user
-    fps = 1e5
     iim.create_config_from_suite(abs_path, fps)
     
 # Load the files and directories from path
@@ -407,15 +407,12 @@ ylabel_loc = [10**((np.log10(vertices[1][0]) + np.log10(vertices[2][0])) / 2),
 # Unzip the vertices into x and y coordinates
 x, y = zip(*vertices)
 
-# plot triangle and add side labels
+# Define parameters from Burton paper
 C_i = 1.024
 C_v = 1.65 / 4 / np.pi
-
-# C_v = 4 / np.pi
 l_cb = 253e-6 # from paper
-t_cb = l_cb * eta / S / C_v # Using crossover length from paper
-l_cb = 3e-3 * Ohb
-t_cb = tau_v * Ohb
+t_cb = 700e-6
+
 # t_cb = (2 * np.pi * eta)**2 * np.sqrt(Rb / (S**3 * rho)) # equating velocities
 x_ana = np.logspace(-20, 5, 200)
 visc = burtonius_visc(x_ana)
