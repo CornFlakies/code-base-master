@@ -19,28 +19,28 @@ import matplotlib.colors as mcolors
 from scipy.optimize import curve_fit
 from ComputeLensDynamics import ComputeLensDynamics
 
-path_burton = "D:\\masterproject\\scrubbed_data\\burton\\dodecane_01.csv"
+path_burton = "S:\\masterproject\\scrubbed_data\\burton\\dodecane_01.csv"
 data_burton2 = pd.read_csv(path_burton).to_numpy() # centimeters and second
 data_burton2[:, 0] *= 1
 data_burton2[:, 1] *= 1e-2
-path_burton = "D:\\masterproject\\scrubbed_data\\burton\\dodecane_02.csv"
+path_burton = "S:\\masterproject\\scrubbed_data\\burton\\dodecane_02.csv"
 data_burton3 = pd.read_csv(path_burton).to_numpy() # centimeters and second
 data_burton3[:, 0] *= 1
 data_burton3[:, 1] *= 1e-2
 
-abs_path_1 = "D:\\masterproject\\images\\dodecane_17012025\\set2"
+abs_path_1 = "S:\\masterproject\\images\\dodecane_17012025\\set2"
 file = os.path.join(abs_path_1, 'data.pkl')
 df1 = pd.read_pickle(file)
 
-abs_path_2 = "D:\\masterproject\\images\\dodecane_18032025\\set1"
+abs_path_2 = "S:\\masterproject\\images\\dodecane_18032025\\set1"
 file = os.path.join(abs_path_2, 'data.pkl')
 df2 = pd.read_pickle(file)
 
-abs_path_3 = "D:\\masterproject\\images\\dodecane_20032025\\set1"
+abs_path_3 = "S:\\masterproject\\images\\dodecane_20032025\\set1"
 file = os.path.join(abs_path_3, 'data.pkl')
 df3 = pd.read_pickle(file)
 
-abs_path_4 = "D:\\masterproject\\images\\dodecane_26032025\\set2"
+abs_path_4 = "S:\\masterproject\\images\\dodecane_26032025\\set2"
 file = os.path.join(abs_path_4, 'data.pkl')
 df4 = pd.read_pickle(file)
 

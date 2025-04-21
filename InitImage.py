@@ -39,18 +39,17 @@ def create_config_from_suite(abs_path, fps, cropping=(None, None, None, None)):
         
     # Define conversion factors for the top and side view
     alpha_top = np.mean(alpha_top)
-    print(alpha_top)
     alpha_side = np.mean(alpha_side)
     
     # For each measurement, compute the initial radius of the droplets
     for directory in contents:
         if bool(re.search("meas", directory)):
             # Load init view images and get drop radii
-            path_init_view = os.path.join(abs_path, directory, 'init_top_view')
-            path_init_view_img, init_view_img = hp.load_files(path_init_view, header="tif")
-            init_view_img = sk.io.imread(path_init_view_img[0])
-            
             try:
+                path_init_view = os.path.join(abs_path, directory, 'init_top_view')
+                path_init_view_img, init_view_img = hp.load_files(path_init_view, header="tif")
+                init_view_img = sk.io.imread(path_init_view_img[0])
+                
                 radii, centers = get_drop_radii(init_view_img)
                 # Plot droplets and save image
                 plot_drops(radii, 
@@ -70,8 +69,8 @@ def create_config_from_suite(abs_path, fps, cropping=(None, None, None, None)):
             # Do a check if config file alread exists
             path_dir = os.path.join(abs_path, directory)
             path_config_file, config_file = hp.load_files(path_dir, header="yaml")
-        
-            if (config_file != []):
+
+            if (config_file):
                 with open(path_config_file[0], 'r', encoding='utf-8') as file:
                     data = yaml.safe_load(file)
                     print(yaml.dump(data, default_flow_style=False))
@@ -90,14 +89,18 @@ def create_config_from_suite(abs_path, fps, cropping=(None, None, None, None)):
             if boolean:
                 # Top view
                 path_top_view  = os.path.join(abs_path, directory, 'top_view')
-                top_image_paths, _ = hp.load_files(path_top_view, 'tif')
-                
-                iv = ImageVisualizer(top_image_paths[0], view='top')
-                start_frame_top, manual_points_top = iv.get_data()
-                # Dump manual points into .npy file
-                if (np.sum(~np.isnan(manual_points_top[:, 0])) != 0):
-                    np.save(os.path.join(abs_path, directory, 'manual_points_top.npy'), manual_points_top)
-                
+                try:
+                    top_image_paths, _ = hp.load_files(path_top_view, 'tif')
+                    
+                    iv = ImageVisualizer(top_image_paths[0], view='top')
+                    start_frame_top, manual_points_top = iv.get_data()
+                    # Dump manual points into .npy file
+                    if (np.sum(~np.isnan(manual_points_top[:, 0])) != 0):
+                        np.save(os.path.join(abs_path, directory, 'manual_points_top.npy'), manual_points_top)
+                except:
+                    start_frame_top = 0
+                    alpha_top = 0
+                    
                 # Side view
                 path_side_view = os.path.join(abs_path, directory, 'side_view') 
                 try:
@@ -310,6 +313,5 @@ def doConfigCreation():
     else:
         return None
     
-    
-    
+  
     
