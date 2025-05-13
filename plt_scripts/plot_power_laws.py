@@ -31,6 +31,14 @@ data_burton3 = pd.read_csv(path_burton).to_numpy() # centimeters and second
 data_burton3[:, 0] *= 1e6
 data_burton3[:, 1] *= 1e4
 
+path_hack = "S:\\masterproject\\scrubbed_data\\hack\\figure1\\1p36mPa.txt"
+data_hack = []
+with open(path_hack, "r") as file:
+    for line in file:
+        data = line.split(" ")
+        data_hack.append([float(data[0]), float(data[1])])
+data_hack = np.asarray(data_hack)
+
 # Define material paremeters, and relevant characteristic scales
 # DODECANE
 eta = 1.36e-3 # Pa s
@@ -109,6 +117,9 @@ def power_law(height, x_start, x_end, p):
 def fit_power_law(x, A, p=1/2):
     return A*x**p
 
+def exp_power_law(x, A):
+    return A*x**(1/6)
+
 def logtriangle(x_loc, y_loc, baselength, slope, flipped=False):
     '''
     Returns the vertices triangle in loglog space. Needs coordinates for vertex of the
@@ -148,6 +159,80 @@ def custom_legend(ax, markerscale=2, frameon=False, fontsize=25, loc=None):
 #%% Plot data
 size = 25
 
+# Create figures
+plt.close('all')
+fig1, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+ax1 = ax[0]
+ax2 = ax[1]
+# fig2, ax2 = plt.subplots(figsize=(7, 6))
+fig3, ax3 = plt.subplots(figsize=(7, 6))
+fig4, ax4 = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+fig5, ax5 = plt.subplots(figsize=(7, 6))
+fig6, ax6 = plt.subplots(figsize=(7, 6))
+fig7, ax7 = plt.subplots(figsize=(7, 6))
+
+
+# Zoomed side view measurements
+abs_path_1 = "S:\\masterproject\\images\\dodecane_17012025\\set2"
+file = os.path.join(abs_path_1, 'data.pkl')
+df1 = pd.read_pickle(file)
+
+abs_path_2 = "S:\\masterproject\\images\\dodecane_18032025\\set1"
+file = os.path.join(abs_path_2, 'data.pkl')
+df2 = pd.read_pickle(file)
+
+abs_path_3 = "S:\\masterproject\\images\\dodecane_20032025\\set1"
+file = os.path.join(abs_path_3, 'data.pkl')
+df3 = pd.read_pickle(file)
+
+abs_path_4 = "S:\\masterproject\\images\\dodecane_26032025\\set2"
+file = os.path.join(abs_path_4, 'data.pkl')
+df4 = pd.read_pickle(file)
+
+# Loop measurement realizations
+r_and_t = []
+for ii in df3.index:
+    # Load all the data from the dataframe
+    r_max_top = df3.loc[ii, 'R_max_top']
+    frames_top = df3.loc[ii, 'frames_top']
+    R = df3.loc[ii, 'drop_radii']
+    fps = df3.loc[ii, 'fps']
+    alpha_top = df3.loc[ii, 'alpha_top']
+    if (ii == 2):
+        continue
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.5), 'none'])    
+
+for ii in df4.index:
+    # Load all the data from the dataframe
+    r_max_top = df4.loc[ii, 'R_max_top']
+    frames_top = df4.loc[ii, 'frames_top']
+    R = df4.loc[ii, 'drop_radii']
+    fps = df4.loc[ii, 'fps']
+    alpha_top = df4.loc[ii, 'alpha_top']
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.5), 'none'])
+
+for ii in df1.index:    
+    # Load all the data from the dataframe
+    r_max_top = df1.loc[ii, 'R_max_top']
+    frames_top = df1.loc[ii, 'frames_top']
+    R = df1.loc[ii, 'drop_radii']
+    fps = df1.loc[ii, 'fps']
+    alpha_top = df1.loc[ii, 'alpha_top']
+    
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.7), 'full'])
+
+rdiff = []
+for (r, t, c1, c2) in r_and_t:
+    # r = np.linalg.norm(r - r[0], axis=1)
+    r = r[:, 1] - r[0, 1]
+    # if not any(np.diff(r)[10:] > 1e-5):
+    t = t - t[0]
+    # ax1.loglog(t[1:] / t_c, r[1:] / l_c, 'o', color=c)
+    ax1.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c1, fillstyle=c2)
+
+# popt_visc, _ = curve_fit(power_law_visc, data_burton2[
+
+# Simultaneous measurements
 # Open DF
 abs_path = "D:\\masterproject\\images\\dodecane_17012025\\set2"
 abs_path = "S:\\masterproject\\images\\dodecane_17012025\\set2"
@@ -173,17 +258,6 @@ matplotlib.rc('xtick', labelsize=size)
 matplotlib.rc('ytick', labelsize=size)
 matplotlib.rc('axes', labelsize=size)
 
-# Create figures
-plt.close('all')
-fig1, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
-ax1 = ax[0]
-ax2 = ax[1]
-# fig2, ax2 = plt.subplots(figsize=(7, 6))
-fig3, ax3 = plt.subplots(figsize=(7, 6))
-fig4, ax4 = plt.subplots(figsize=(7, 6))
-fig5, ax5 = plt.subplots(figsize=(7, 6))
-fig6, ax6 = plt.subplots(figsize=(7, 6))
-fig7, ax7 = plt.subplots(figsize=(7, 6))
 
 # Set unit of the axis labels
 unit = 1e6 # Micrometers
@@ -218,19 +292,19 @@ for ii in df.index:
     t_i = np.sqrt((rho * R**3) / gamma)
     
     # Plot of the top view heights of each individual measurement
-    ax1.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.3f} mm')#, label=f'R = {R * 1e3:.2f} mm')
-    start=60
-    end=-1
-    popt, pcov = curve_fit(fit_power_law, x_top[start:end], r_plot_top[start:end], p0=[1])
-    power_laws.append([popt[0], R])     
-    x_dat = np.logspace(-4, -2, 50)
+    # ax1.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.3f} mm')#, label=f'R = {R * 1e3:.2f} mm')
+    # start=60
+    # end=-1
+    # popt, pcov = curve_fit(fit_power_law, x_top[start:end], r_plot_top[start:end], p0=[1])
+    # power_laws.append([popt[0], R])     
+    # x_dat = np.logspace(-4, -2, 50)
 
     # Define x- and y-values of side view plot
     x_side = (frames_side - frames_top[0]) / fps
     r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
 
     # Plot of side view heights of each individual measurement
-    ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(norm(R)), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
+    ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(0.8), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     
     # Plot the top view heights of each individual measurement
     ax3.loglog(x_top[1:] / t_c, r_plot_top[1:] / l_c, '.', lw=2, color=cmap(norm(R)))
@@ -263,9 +337,9 @@ for ii in df.index:
 #----------------------- MAKE TOP VIEW PLOT WITH BURTON DATA ------------------
 #------------------------------------------------------------------------------
 # Create fig1 legend so that burton and hack data does not get added
-handles, labels = ax1.get_legend_handles_labels()
-labels, handles = zip(*sorted(zip(labels, handles), key=lambda t:t[0]))
-fig1.legend(handles, labels, loc='upper center', ncols=4, markerscale=2, fontsize=15)
+# handles, labels = ax1.get_legend_handles_labels()
+# labels, handles = zip(*sorted(zip(labels, handles), key=lambda t:t[0]))
+# fig1.legend(handles, labels, loc='upper center', ncols=4, markerscale=2, fontsize=15)
 
 vertices = logtriangle(100, 400, 400, 1/2, flipped=True)
 
@@ -319,7 +393,7 @@ ax1.legend([ax1.lines[-1]], ['Burton & Taborek 2007'],
            loc='upper left')
 # custom_legend(ax1, fontsize=18, loc='upper left')
 # ax1.set_title("Top view, $y_0$ as a function of time")
-ax1.set_ylim([0.5e2, 1.5e3])
+ax1.set_ylim([1e1, 1.5e3])
 ax1.set_xlabel('$t - t_0\, [\mu s]$')
 ax1.set_ylabel('$y_0 [\mu m]$')
 ax1.xaxis.set_ticks_position('both')
@@ -402,28 +476,41 @@ start=5
 cutoff = -40
 t *= 1e3
 
+# Plot the mean of y0/h0
+ax4[1].errorbar(t[start:cutoff], mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
+ax4[1].set_xlabel(r'$(t - t_0)[ms]$')
+ax4[1].set_ylabel('$y_0 / h_0$')
+ax4[1].set_ylim([0.15, 0.26])
+
+ax4[0].errorbar(t[start:cutoff], mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
+# custom_legend(ax4[0])
+ax4[0].set_xlabel(r'$(t - t_0)[ms]$')
+
+
 # Fit power law to data
 idx = ~np.isnan(mean)
 popt, pcov = curve_fit(fit_power_law, t[idx], mean[idx], p0=[1, 1/6])
 x_dat = np.linspace(t[start], t[cutoff], 200)
+ax4[0].loglog(x_dat, fit_power_law(x_dat, *popt), '-.', lw=3, color='black', label=rf'$y_0/h_0 = {popt[0]:.3f}\, t^{{{popt[1]:.3f}}}$')
+ax4[1].plot(x_dat, fit_power_law(x_dat, *popt), '-.', lw=3, color='black', label=rf'$y_0/h_0 = {popt[0]:.3f}\, t^{{{popt[1]:.3f}}}$')
 
-# Plot the mean of y0/h0
-ax4.errorbar(t[start:cutoff], mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
-ax4.plot(x_dat, fit_power_law(x_dat, *popt), '-.', lw=3, color='black', label=rf'$y_0/h_0 \sim t^{{{popt[1]:.3f}}}$')
-custom_legend(ax4)
-ax4.set_xlabel(r'$(t - t_0)[ms]$')
-ax4.set_ylabel('$y_0 / h_0$')
-ax4.set_ylim([0.15, 0.26])
+# Fit power law to data
+idx = ~np.isnan(mean)
+popt, pcov = curve_fit(exp_power_law, t[idx], mean[idx], p0=[1])
+x_dat = np.linspace(t[start], t[cutoff], 200)
+ax4[0].loglog(x_dat, exp_power_law(x_dat, *popt), '--', lw=3, color='black', label=rf'$y_0/h_0 = {popt[0]:.3f}\,$' + r'$t^{1/6}$')
+ax4[1].plot(x_dat, exp_power_law(x_dat, *popt), '--', lw=3, color='black', label=rf'$y_0/h_0 = {popt[0]:.3f}\,$' + r'$t^{1/6}$')
+
+custom_legend(ax4[1])
 
 # Create a secondary y-axis with numeric values, but keep it aligned
-ax8 = ax4.twinx()
+ax8 = ax4[0].twinx()
 # ax8.set_yticks(np.linspace(0.14, 0.24, 10))
 y_ticks = np.linspace(0.15, 0.26, 10) * 180 / np.pi
 ax8.set_yticklabels(
     [f"{label:.1f}" for label in y_ticks]
 );
 ax8.set_ylabel(r"$\theta$")
-
 
 #------------------------------------------------------------------------------
 # --------------------------------- MAKE A(R) plot ----------------------------

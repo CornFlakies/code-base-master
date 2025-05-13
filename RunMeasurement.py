@@ -27,8 +27,8 @@ abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set2_zoom"
 abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set2_zoom_higher_fps"
 abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set2_zoom_highest_fps"
 abs_path = "D:\\masterproject\\images\\mineral_oil_27032025_94mpas\\set1_no_zoom"
-abs_path = "S:\\masterproject\\images\\height_measurements\\11042024\\set5\\"
-fps = 10000
+abs_path = "S:\\masterproject\\images\\height_measurements\\11042024\\set6\\"
+fps = 1e5
 
 # If the config files do not exist, create new ones.
 isLive = True

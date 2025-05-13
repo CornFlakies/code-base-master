@@ -19,9 +19,7 @@ import matplotlib.colors as mcolors
 from scipy.optimize import curve_fit
 from ComputeLensDynamics import ComputeLensDynamics
 
-
-
-fps = 10000
+fps = 100000
 unit = 1e6
 
 plt.close('all')
@@ -33,7 +31,7 @@ def plot_df_top(df, fig, ax, color='blue'):
         r_max_side = df.loc[ii, 'Y_max_side']
         frames_side = df.loc[ii, 'frames_side']
         R = df.loc[ii, 'drop_radii']
-        fps = df.loc[ii, 'fps']
+        # fps = df.loc[ii, 'fps']
         alpha_top = df.loc[ii, 'alpha_top']
         alpha_side = df.loc[ii, 'alpha_side']
         
@@ -69,5 +67,15 @@ abs_path = "S:\\masterproject\\images\\height_measurements\\11042024\\set5\\"
 file = os.path.join(abs_path, 'data.pkl')
 df = pd.read_pickle(file)
 plot_df_top(df, fig1, ax1, color='brown')
+
+abs_path = "S:\\masterproject\\images\\height_measurements\\11042024\\set6\\"
+file = os.path.join(abs_path, 'data.pkl')
+df = pd.read_pickle(file)
+plot_df_top(df, fig1, ax1, color='orange')
+
+abs_path = "S:\\masterproject\\images\\dodecane_17012025\\set2\\"
+file = os.path.join(abs_path, 'data.pkl')
+df = pd.read_pickle(file)
+plot_df_top(df, fig1, ax1, color='black')
 
 

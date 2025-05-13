@@ -101,21 +101,21 @@ class CalibrateImages():
     
         return (self.spacing / dist).mean() #m px**-1
 
-# import os
+import os
 
-# abs_path = "S:\\masterproject\\images\\height_measurements\\11042024\\set4\\"
-# file =  "cropped_calib_250micron_side.tif"
-# calib_path = os.path.join(abs_path, file)
-# calib_img = sk.io.imread(calib_path)
-# plt.close('all')
+abs_path = "S:\\masterproject\\images\\height_measurements\\11042024\\set6\\water_height\\"
+file =  "water_height_calib_side_500micron_20250508_125957000001.tif"
+calib_path = os.path.join(abs_path, file)
+calib_img = sk.io.imread(calib_path)
+plt.close('all')
 
 # # Load the files and directories from path
 # contents = os.listdir(abs_path)
 
-# # Get images for calibration, define alpha of both top and side view
-# calib_paths, calib_files = hp.load_files(abs_path, header="tif")
-# ci = CalibrateImages()
-# alpha = ci.run(calib_path, file)
+# Get images for calibration, define alpha of both top and side view
+calib_paths, calib_files = hp.load_files(abs_path, header="tif")
+ci = CalibrateImages()
+alpha = ci.run(calib_path, file)
 
 # # # Multiple calibration images can be provided
 # # alpha_top = []

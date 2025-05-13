@@ -41,6 +41,9 @@ def create_config_from_suite(abs_path, fps, cropping=(None, None, None, None)):
     alpha_top = np.mean(alpha_top)
     alpha_side = np.mean(alpha_side)
     
+    print(alpha_top)
+    print(alpha_side)
+    
     # For each measurement, compute the initial radius of the droplets
     for directory in contents:
         if bool(re.search("meas", directory)):
@@ -86,6 +89,7 @@ def create_config_from_suite(abs_path, fps, cropping=(None, None, None, None)):
             else:
                 boolean = True
             
+            print(boolean)
             if boolean:
                 # Top view
                 path_top_view  = os.path.join(abs_path, directory, 'top_view')
