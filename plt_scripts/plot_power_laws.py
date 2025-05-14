@@ -165,7 +165,7 @@ fig1, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
 ax1 = ax[0]
 ax2 = ax[1]
 # fig2, ax2 = plt.subplots(figsize=(7, 6))
-fig3, ax3 = plt.subplots(figsize=(7, 6))
+fig3, ax3 = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
 fig4, ax4 = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
 fig5, ax5 = plt.subplots(figsize=(7, 6))
 fig6, ax6 = plt.subplots(figsize=(7, 6))
@@ -219,16 +219,28 @@ for ii in df1.index:
     fps = df1.loc[ii, 'fps']
     alpha_top = df1.loc[ii, 'alpha_top']
     
-    r_and_t.append([r_max_top, frames_top / fps, cmap(.7), 'full'])
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.8), 'full'])
 
 rdiff = []
+first = True
+firstSim = True
 for (r, t, c1, c2) in r_and_t:
     # r = np.linalg.norm(r - r[0], axis=1)
     r = r[:, 1] - r[0, 1]
     # if not any(np.diff(r)[10:] > 1e-5):
     t = t - t[0]
     # ax1.loglog(t[1:] / t_c, r[1:] / l_c, 'o', color=c)
-    ax1.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c1, fillstyle=c2)
+    if ((c2 =='full') & firstSim):
+        ax1.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c1, fillstyle=c2, label='Simultaneous Data')
+        firstSim = False
+    elif first:
+        ax1.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c1, fillstyle=c2, label='Extra Data')
+        first = False
+    else:
+        ax1.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c1, fillstyle=c2)
+    
+        
+    
 
 # popt_visc, _ = curve_fit(power_law_visc, data_burton2[
 
@@ -268,6 +280,9 @@ y0h0 = []
 power_laws = []
 
 # Loop measurement realizations
+params_top = []
+params_side = []
+first = True
 for ii in df.index:
     # Load all the data from the dataframe
     r_max_top = df.loc[ii, 'R_max_top']
@@ -298,16 +313,35 @@ for ii in df.index:
     # popt, pcov = curve_fit(fit_power_law, x_top[start:end], r_plot_top[start:end], p0=[1])
     # power_laws.append([popt[0], R])     
     # x_dat = np.logspace(-4, -2, 50)
-
-    # Define x- and y-values of side view plot
-    x_side = (frames_side - frames_top[0]) / fps
-    r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
-
-    # Plot of side view heights of each individual measurement
-    ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(0.8), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
     
-    # Plot the top view heights of each individual measurement
-    ax3.loglog(x_top[1:] / t_c, r_plot_top[1:] / l_c, '.', lw=2, color=cmap(norm(R)))
+    if first:
+        # Define x- and y-values of side view plot
+        x_side = (frames_side - frames_top[0]) / fps
+        r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
+    
+        # Plot of side view heights of each individual measurement
+        ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(.8), markersize=8, label='Simultaneous Data')#, label=f'R = {R * 1e3:.2f} mm')
+        ax3[1].loglog(x_side[1:] * unit, r_plot_side[1:] * unit, 'o', color=cmap(.8), markersize=8, label='Exp. Data')
+        params_side.append(curve_fit(fit_power_law, x_side[1:], r_plot_side[1:], p0=[1, 3/2])[0])
+        
+        # Plot the top view heights of each individual measurement
+        ax3[0].loglog(x_top[1:] * unit, r_plot_top[1:] * unit, 'o', lw=2, color=cmap(.8), label='Exp. Data')
+        params_top.append(curve_fit(fit_power_law, x_top[1:], r_plot_top[1:], p0=[1, 1/2])[0])
+        
+        first = False
+    else:
+        # Define x- and y-values of side view plot
+        x_side = (frames_side - frames_top[0]) / fps
+        r_plot_side = np.linalg.norm(r_max_side - r_max_side[0], axis=1)
+    
+        # Plot of side view heights of each individual measurement
+        ax2.loglog(x_side[1:] * unit, r_plot_side[1:] * unit, '.', color=cmap(.8), markersize=8)#, label=f'R = {R * 1e3:.2f} mm')
+        ax3[1].loglog(x_side[1:] * unit, r_plot_side[1:] * unit, 'o', color=cmap(.8), markersize=8)
+        params_side.append(curve_fit(fit_power_law, x_side[1:], r_plot_side[1:], p0=[1, 3/2])[0])
+        
+        # Plot the top view heights of each individual measurement
+        ax3[0].loglog(x_top[1:] * unit, r_plot_top[1:] * unit, 'o', lw=2, color=cmap(.8))
+        params_top.append(curve_fit(fit_power_law, x_top[1:], r_plot_top[1:], p0=[1, 1/2])[0])
     
     # Compute h_0 / y_0
     indices = find_matching_indices(frames_top, frames_side)
@@ -332,6 +366,31 @@ for ii in df.index:
 
     ax6.loglog(x_top[1:] * unit, r_plot_top[1:] * unit, '.', color=cmap(norm(R)), markersize=8, label=f'{R*1e3:0.2f} mm')
     ax6.set_ylim([0.5e2, 1.5e3])
+
+
+# 
+#------------------------------------------------------------------------------
+#----------------- Make top view plot with only simultaneous measurements------
+#------------------------------------------------------------------------------
+ax3[0].set_xlim([0.25e2, 0.5e4])
+ax3[0].set_ylim([0.5e2, 1e3])
+ax3[1].set_xlim([1e0, 1e4])
+ax3[1].set_xlabel('$t - t_0\, [\mu s]$')
+ax3[1].set_ylabel('$h_0 [\mu m]$')
+ax3[0].set_xlabel('$t - t_0\, [\mu s]$')
+ax3[0].set_ylabel('$y_0 [\mu m]$')
+
+x_dat_top = np.logspace(-1, 4, 200)
+p_side = np.mean(np.asarray(params_side), axis=0)
+x_dat_side = np.logspace(0, 4, 200)
+p_top = np.mean(np.asarray(params_top), axis=0)    
+
+ax3[0].loglog(x_dat_top, fit_power_law(x_dat_top * 1e-6, p_top[0], p_top[1]) * 1e6, '-.', lw=3, color='black', label=rf'$y_0\sim {p_top[0]:.3f}\, t^{{{p_top[1]:.3f}}}$')
+ax3[1].loglog(x_dat_side, fit_power_law(x_dat_side * 1e-6, p_side[0], p_side[1]) * 1e6, '-.', lw=3, color='black', label=rf'$h_0\sim {p_side[0]:.3f}\, t^{{{p_side[1]:.3f}}}$')
+custom_legend(ax3[0])
+custom_legend(ax3[1])
+
+
 
 #------------------------------------------------------------------------------
 #----------------------- MAKE TOP VIEW PLOT WITH BURTON DATA ------------------
@@ -386,11 +445,12 @@ ax1.plot(x, y, color='black')
 ax1.annotate('2', xlabel_loc, textcoords="offset points", xytext=(-15, 0), fontsize=25, ha='right')
 ax1.annotate('1', ylabel_loc, textcoords="offset points", xytext=(0, 15), fontsize=25, ha='center')
 ax1.loglog(data_burton[:, 0], data_burton[:, 1], 'd', color='black', label='Burton &\nTaborek. 2007')
-ax1.legend([ax1.lines[-1]], ['Burton & Taborek 2007'], 
-           markerscale=2,
-           frameon=False,
-           fontsize=15, 
-           loc='upper left')
+# ax1.legend([ax1.lines[-1]], ['Burton & Taborek 2007'], 
+#            markerscale=2,
+#            frameon=False,
+#            fontsize=15, 
+#            loc='upper left')
+custom_legend(ax1, fontsize=12.5, loc='upper left')
 # custom_legend(ax1, fontsize=18, loc='upper left')
 # ax1.set_title("Top view, $y_0$ as a function of time")
 ax1.set_ylim([1e1, 1.5e3])
@@ -423,11 +483,12 @@ ax2.loglog(data_hack[:, 0] * 1e6, data_hack[:, 1] * 1e6, '>', color='black', lab
 ax2.set_xlim([0.5e1, 1e4])
 
 # Set custom legend
-ax2.legend([ax2.lines[-1]], ['Hack et al. 2020'], 
-           markerscale=2,
-           frameon=False,
-           fontsize=15, 
-           loc='upper left')
+# ax2.legend([ax2.lines[-1]], ['Hack et al. 2020'], 
+#            markerscale=2,
+#            frameon=False,
+#            fontsize=15, 
+#            loc='upper left')
+custom_legend(ax2, fontsize=15)
 # custom_legend(ax2, fontsize=20, loc='upper left')
 ax2.set_ylabel('$h_0 [\mu m]$')
 ax2.set_xlabel('$t - t_0\, [\mu s]$')
@@ -436,19 +497,19 @@ ax2.xaxis.set_ticks_position('both')
 ax2.yaxis.set_ticks_position('both')
 
 # ax3.set_title("top view, divided by the drop radius")
-xi = np.logspace(-2, 7, 100)
-ax3.loglog(data_burton[:, 0] * 1e-6 / t_c, data_burton[:, 1] * 1e-6 / l_c, '>', color='black', label='Burton & Taborek 2007')
-ax3.loglog(xi, cross_over(xi), '-', color='black', label=r'$f\, (\xi)$')
-ax3.loglog(xi, cross_over_visc(xi), '--', color='black', label=r'$C_v \xi$')
-ax3.loglog(xi, cross_over_iner(xi), '-.', color='black', label=r'$C_i \sqrt{\xi}$')
-ax3.set_ylim([1e-2, 1e3])
-ax3.set_xlim([1e-1, 1e7])
-ax3.set_xlabel(r'$t/t_c$')
-ax3.set_ylabel('$y_0/l_c$')
-custom_legend(ax3, fontsize=15, markerscale=1.5, loc='lower right')
-ax3.minorticks_on()
-ax3.xaxis.set_ticks_position('both')
-ax3.yaxis.set_ticks_position('both')
+# xi = np.logspace(-2, 7, 100)
+# ax3.loglog(data_burton[:, 0] * 1e-6 / t_c, data_burton[:, 1] * 1e-6 / l_c, '>', color='black', label='Burton & Taborek 2007')
+# ax3.loglog(xi, cross_over(xi), '-', color='black', label=r'$f\, (\xi)$')
+# ax3.loglog(xi, cross_over_visc(xi), '--', color='black', label=r'$C_v \xi$')
+# ax3.loglog(xi, cross_over_iner(xi), '-.', color='black', label=r'$C_i \sqrt{\xi}$')
+# ax3.set_ylim([1e-2, 1e3])
+# ax3.set_xlim([1e-1, 1e7])
+# ax3.set_xlabel(r'$t/t_c$')
+# ax3.set_ylabel('$y_0/l_c$')
+# custom_legend(ax3, fontsize=15, markerscale=1.5, loc='lower right')
+# ax3.minorticks_on()
+# ax3.xaxis.set_ticks_position('both')
+# ax3.yaxis.set_ticks_position('both')
 
 
 # ax3.set_title("top view, divided by the drop radius")
@@ -478,13 +539,13 @@ t *= 1e3
 
 # Plot the mean of y0/h0
 ax4[1].errorbar(t[start:cutoff], mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
-ax4[1].set_xlabel(r'$(t - t_0)[ms]$')
-ax4[1].set_ylabel('$y_0 / h_0$')
+ax4[0].set_xlabel(r'$(t - t_0)[ms]$')
+ax4[0].set_ylabel('$y_0 / h_0$')
 ax4[1].set_ylim([0.15, 0.26])
 
 ax4[0].errorbar(t[start:cutoff], mean[start:cutoff], yerr=std[start:cutoff], fmt='+', color='green')
 # custom_legend(ax4[0])
-ax4[0].set_xlabel(r'$(t - t_0)[ms]$')
+ax4[1].set_xlabel(r'$(t - t_0)[ms]$')
 
 
 # Fit power law to data
@@ -504,7 +565,7 @@ ax4[1].plot(x_dat, exp_power_law(x_dat, *popt), '--', lw=3, color='black', label
 custom_legend(ax4[1])
 
 # Create a secondary y-axis with numeric values, but keep it aligned
-ax8 = ax4[0].twinx()
+ax8 = ax4[1].twinx()
 # ax8.set_yticks(np.linspace(0.14, 0.24, 10))
 y_ticks = np.linspace(0.15, 0.26, 10) * 180 / np.pi
 ax8.set_yticklabels(

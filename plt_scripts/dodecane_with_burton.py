@@ -14,10 +14,15 @@ import skimage as sk
 from tqdm import tqdm
 # import InitImage as iim
 import HelperFunctions as hp
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from scipy.optimize import curve_fit
 from ComputeLensDynamics import ComputeLensDynamics
+
+# Set font to be latex mathtext
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
 path_burton = "S:\\masterproject\\scrubbed_data\\burton\\dodecane_01.csv"
 data_burton2 = pd.read_csv(path_burton).to_numpy() # centimeters and second
@@ -56,7 +61,7 @@ gamma0 = 72e-3 # N / m
 rho0 = 998 # kg / m^3
 
 # Different characteristic time- and lengthscales
-R = 1e-3 # m
+R = 2e-3 # m
 l_v = eta**2 / (gamma * rho) # Capillary length dodecane
 t_v = eta**3 / (gamma**2 * rho) # Viscous time scale of dodecane
 t_v0 = eta0**3 / (gamma0**2 * rho0) # Viscous time scale of water
@@ -71,9 +76,13 @@ l_n = 0.5e-6 # natural viscous length scale
 S = 5e-3 # N / m 
 Ohb = eta / np.sqrt(rho * S * Rb) # Ohnesorge number with Burtons definitions
 tau_vb = eta * R / S # viscous length scale with spreading coefficient
+Rdrop = R
 
 lim_visc = 80
 lim_iner = 40
+
+# A colorset
+cmap = plt.cm.Reds
 
 plt.close('all')
 
@@ -97,7 +106,7 @@ for ii in df1.index:
     fps = df1.loc[ii, 'fps']
     alpha_top = df1.loc[ii, 'alpha_top']
     
-    r_and_t.append([r_max_top, frames_top / fps, 'red'])
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.8)])
     
 for ii in df3.index:
     # Load all the data from the dataframe
@@ -108,7 +117,7 @@ for ii in df3.index:
     alpha_top = df3.loc[ii, 'alpha_top']
     if (ii == 2):
         continue
-    r_and_t.append([r_max_top, frames_top / fps, 'blue'])
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.8)])
     
 for ii in df4.index:
     # Load all the data from the dataframe
@@ -117,7 +126,7 @@ for ii in df4.index:
     R = df4.loc[ii, 'drop_radii']
     fps = df4.loc[ii, 'fps']
     alpha_top = df4.loc[ii, 'alpha_top']
-    r_and_t.append([r_max_top, frames_top / fps, 'green'])
+    r_and_t.append([r_max_top, frames_top / fps, cmap(.8)])
 
 # Define crossover time and length to create new fits
 t_c = tau_vb * Ohb
@@ -125,19 +134,33 @@ l_c = 1e-1 * Ohb
 
 fig1, ax1 = plt.subplots()
 fig2, ax2 = plt.subplots()
+fig3, ax3 = plt.subplots()
 rdiff = []
+first = True
 for (r, t, c) in r_and_t:
     # r = np.linalg.norm(r - r[0], axis=1)
     r = r[:, 1] - r[0, 1]
     # if not any(np.diff(r)[10:] > 1e-5):
     t = t - t[0]
-    ax1.loglog(t[1:] / t_c, r[1:] / l_c, 'o', color=c)
-    ax2.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c)
+    if first:
+        ax1.loglog(t[1:] / t_c, r[1:] / l_c, 'o', color=c, label='Exp. Data')
+        ax2.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c, label='Exp. Data')
+        ax3.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c, label='Exp. Data')
+        first = False
+    else:
+        ax1.loglog(t[1:] / t_c, r[1:] / l_c, 'o', color=c)
+        ax2.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c)
+        ax3.loglog(t[1:] * 1e6, r[1:] * 1e6, 'o', color=c)
 
 popt_visc, _ = curve_fit(power_law_visc, data_burton2[lim_visc:, 0] / t_c, data_burton2[lim_visc:, 1] / l_c, p0=[1.65/(4*np.pi)])
 popt_iner, _ = curve_fit(power_law_iner, data_burton3[:lim_iner, 0] / t_c, data_burton3[:lim_iner, 1] / l_c, p0=[1.024])
 C_v = popt_visc[0]
 C_i = popt_iner[0]
+
+theta = 30 * np.pi / 180
+C_hack = 1.1055 * gamma * theta / eta
+C_bv = 1.65 * (S/eta/4/np.pi)
+C_bi = 1.024 * (Rdrop*S/rho)**(1/4)
 
 # Define crossover time and length
 t_c = tau_vb * Ohb
@@ -166,16 +189,20 @@ print(popt_iner[0])
 # C_v = 1.65 / 4 / np.pi 
 # C_i = 1.024
 
-plt.figure()
-plt.loglog(data_burton2[:, 0] * 1e6, data_burton2[:, 1] * 1e6, 'd', color='green', label='Burton (original)')
-plt.loglog(data_burton3[:, 0] * 1e6, data_burton3[:, 1] * 1e6, 'd', color='green')
-x_ana = np.logspace(-5, -1, 50)
-plt.loglog(x_ana * 1e6, power_law_visc(x_ana, C_v * S / eta) * 1e6, '-', color='black', label=r'$0.126\, S\tau / \eta$')
-plt.loglog(x_ana * 1e6, power_law_iner(x_ana, C_i * (R * S / rho)**(1/4)) * 1e6, '-.', color='black', label=r'$1.422\, (R S / \rho)^{1/4}\, \tau^{1/2}$')
-plt.loglog(x_ana * 1e6, cross_over(x_ana, C_v * S / eta, C_i * (R * S / rho)**(1/4)) * 1e6, '-', color='red', label='crossover-func')
-plt.xlabel(r'Time [$\mu s$]')
-plt.ylabel(r'Neck Radius [$\mu m$]')
-plt.legend()
-plt.tight_layout()
+ax3.loglog(data_burton2[:, 0] * 1e6, data_burton2[:, 1] * 1e6, 'd', color='black', label='Burton (original)')
+ax3.loglog(data_burton3[:, 0] * 1e6, data_burton3[:, 1] * 1e6, 'd', color='black')
+ax3.axhline(y=1000, linestyle='dotted', color='black', lw=2, label=r'$R_{drop}$')
+x_ana = np.logspace(-7, 0, 50)
+ax3.loglog(x_ana * 1e6, power_law_visc(x_ana, C_bv) * 1e6, '--', color='black', label=r'$1.65\, (S/4\pi \eta)\, t$')
+ax3.loglog(x_ana * 1e6, power_law_iner(x_ana, C_bi) * 1e6, '-.', color='black', label=r'$1.024\, (R S / \rho)^{1/4}\, t^{1/2}$')
+x_ana = np.logspace(-7, -1, 50)
+ax3.loglog(x_ana * 1e6, power_law_visc(x_ana, C_hack) * 1e6, '-', color='black', label=r'$1.1055\, (\gamma\theta/\eta)\, t$')
+# plt.loglog(x_ana * 1e6, cross_over(x_ana, C_v * S / eta, C_i * (R * S / rho)**(1/4)) * 1e6, '-', color='red', label='crossover-func')
+ax3.set_xlabel(r't [$\mu s$]')
+ax3.set_ylabel(r'$y_0$ [$\mu m$]')
+ax3.set_ylim([1e1, 1e4])
+ax3.set_xlim([1e1, 1e5])
+ax3.legend()
+fig3.tight_layout()
 
 
